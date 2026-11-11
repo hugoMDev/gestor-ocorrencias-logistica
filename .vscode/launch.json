@@ -1,0 +1,12 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Executar Gestor de Ocorrências (App)",
+            "request": "launch",
+            "mainClass": "com.logistica.ocorrencias.App",
+            "projectName": "gestor-ocorrencias-logistica"
+        }
+    ]
+}

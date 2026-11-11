@@ -1,0 +1,11 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+.vscode/*
+!.vscode/launch.json
+!.vscode/settings.json
+*.log
+*.tmp
+dados/
+dist/ 
+dist/ 
+target/ 
