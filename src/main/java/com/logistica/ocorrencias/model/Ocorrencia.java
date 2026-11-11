@@ -1,6 +1,9 @@
 package com.logistica.ocorrencias.model;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.logistica.ocorrencias.util.JsonDateDeserializer;
+import com.logistica.ocorrencias.util.JsonDateSerializer;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -15,18 +18,21 @@ public class Ocorrencia implements Serializable {
 
     private String id;
 
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd/MM/yyyy HH:mm")
+    @JsonSerialize(using = JsonDateSerializer.class)
+    @JsonDeserialize(using = JsonDateDeserializer.class)
     private LocalDateTime dataHora;
 
     private PoloRegional poloRegional;
     private TipoOcorrencia tipoOcorrencia;
     private String placaVeiculo;
     private String motorista;
+    private String monitor;
     private Gravidade gravidade;
     private StatusOcorrencia status;
     private String descricao;
 
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd/MM/yyyy HH:mm")
+    @JsonSerialize(using = JsonDateSerializer.class)
+    @JsonDeserialize(using = JsonDateDeserializer.class)
     private LocalDateTime dataResolucao;
 
     private String observacaoResolucao;
@@ -38,20 +44,30 @@ public class Ocorrencia implements Serializable {
     }
 
     /**
-     * Construtor completo para novas ocorrências.
+     * Construtor completo para novas ocorrências com monitor responsável.
      */
     public Ocorrencia(String id, LocalDateTime dataHora, PoloRegional poloRegional,
                       TipoOcorrencia tipoOcorrencia, String placaVeiculo, String motorista,
-                      Gravidade gravidade, StatusOcorrencia status, String descricao) {
+                      String monitor, Gravidade gravidade, StatusOcorrencia status, String descricao) {
         this.id = (id != null && !id.isBlank()) ? id : UUID.randomUUID().toString();
         this.dataHora = (dataHora != null) ? dataHora : LocalDateTime.now();
         this.poloRegional = poloRegional;
         this.tipoOcorrencia = tipoOcorrencia;
         this.placaVeiculo = placaVeiculo;
         this.motorista = motorista;
+        this.monitor = monitor;
         this.gravidade = gravidade;
         this.status = (status != null) ? status : StatusOcorrencia.PENDENTE;
         this.descricao = descricao;
+    }
+
+    /**
+     * Construtor de compatibilidade para ocorrências sem monitor explícito.
+     */
+    public Ocorrencia(String id, LocalDateTime dataHora, PoloRegional poloRegional,
+                      TipoOcorrencia tipoOcorrencia, String placaVeiculo, String motorista,
+                      Gravidade gravidade, StatusOcorrencia status, String descricao) {
+        this(id, dataHora, poloRegional, tipoOcorrencia, placaVeiculo, motorista, "Operador Central", gravidade, status, descricao);
     }
 
     // Getters e Setters
@@ -101,6 +117,14 @@ public class Ocorrencia implements Serializable {
 
     public void setMotorista(String motorista) {
         this.motorista = motorista;
+    }
+
+    public String getMonitor() {
+        return (monitor != null && !monitor.isBlank()) ? monitor : "Operador Central";
+    }
+
+    public void setMonitor(String monitor) {
+        this.monitor = monitor;
     }
 
     public Gravidade getGravidade() {
@@ -165,6 +189,7 @@ public class Ocorrencia implements Serializable {
                 ", tipoOcorrencia=" + tipoOcorrencia +
                 ", placaVeiculo='" + placaVeiculo + '\'' +
                 ", motorista='" + motorista + '\'' +
+                ", monitor='" + monitor + '\'' +
                 ", gravidade=" + gravidade +
                 ", status=" + status +
                 '}';

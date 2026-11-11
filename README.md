@@ -8,11 +8,18 @@ Aplicação desktop standalone desenvolvida 100% em **Java 17+**, **Swing** e es
 
 - **Interface Gráfica Moderna (Dark Theme)**: Estilização nativa com FlatLaf Dark, curvas suaves, badges com códigos de cor para níveis de gravidade e status do incidente.
 - **Painel de Indicadores (KPIs em Tempo Real)**: Cards dinâmicos no topo apresentando o *Total de Ocorrências*, *Abertas*, *Incidentes Críticos* e *Resolvidas*.
-- **Formulário de Cadastro Ágil**: Inserção rápida com validações de campos obrigatórios, seleção de Polos Regionais, Tipos de Ocorrência e Graus de Severidade.
+- **Formulário de Cadastro Ágil**: Inserção rápida com validações de campos obrigatórios, seleção de Polos Regionais, Tipos de Ocorrência, Graus de Severidade e identificação do **Monitor Operacional Responsável**.
 - **Validador de Placas Veiculares**: Suporte completo a placas no **Padrão Mercosul** (`ABC1D23`) e **Padrão Tradicional/Cinza** (`ABC-1234`), com formatação automática e conversão em caixa alta.
-- **Tabela Interativa com Filtros Multicritério**: Busca textual em tempo real (placa, motorista, descrição, ID) combinada a filtros de Polo, Status e Gravidade.
+- **Tabela Interativa com Filtros e Ordenação**:
+  - Busca textual em tempo real (placa, motorista, monitor, descrição, ID).
+  - Filtros por Polo Regional, Status e Gravidade.
+  - Ordenação por **Mais Recentes (Data/Hora Decrescente)** como padrão no filtro e controle dedicado de ordenação.
+  - Coluna dedicada para o **Monitor Responsável** imediatamente ao lado da descrição.
+- **Gestão de Gravidade com Trava Temporal (Carência de 10 segundos)**:
+  - Botão de ação rápida **Alterar Gravidade** na barra superior para alternar entre `BAIXA`, `MEDIA`, `ALTA` e `CRITICA`.
+  - **Regra de Trava Temporal**: Bloqueio de edição com carência de 10 segundos após a criação do registro, notificando o operador com os segundos restantes.
 - **Ciclo de Vida e Tratativa Operacional**: Alteração de status direta (`PENDENTE` ➔ `EM ANÁLISE` ➔ `RESOLVIDO`), permitindo registrar anotações de fechamento e data/hora de resolução.
-- **Exportação para CSV**: Exportação dos dados filtrados para arquivos `.csv` compatíveis com o Microsoft Excel e ferramentas analíticas.
+- **Exportação para CSV**: Exportação dos dados filtrados para arquivos `.csv` (com BOM UTF-8) incluindo o campo do Monitor para o Microsoft Excel e relatórios de auditoria.
 - **Persistência 100% Offline e Local**: Gravação dos dados em formato JSON (`dados/ocorrencias.json`) através do Jackson, com criação automática de pastas e gravação atômica segura contra corrupção.
 
 ---
@@ -25,15 +32,16 @@ O projeto adota uma arquitetura desacoplada e limpa:
 com.logistica.ocorrencias
 ├── model/                 # Entidades e enums de domínio
 │   ├── Gravidade.java         # Enum: BAIXA, MEDIA, ALTA, CRITICA (com cores de badge)
-│   ├── Ocorrencia.java        # Entidade central com anotações Jackson
+│   ├── Ocorrencia.java        # Entidade central com anotações Jackson e campo monitor
 │   ├── PoloRegional.java      # Enum: ITUPEVA, PAULINIA, SAO_JOSE_DOS_CAMPOS, CAPITAL_SP, OUTRO
 │   ├── StatusOcorrencia.java  # Enum: PENDENTE, EM_ANALISE, RESOLVIDO
-│   └── TipoOcorrencia.java    # Enum: AVARIA, DESVIO_ROTA, ATRASO_CARGA, SINISTRO, FALHA_VEICULO
+│   ├── TipoOcorrencia.java    # Enum: AVARIA, DESVIO_ROTA, ATRASO_CARGA, SINISTRO, FALHA_VEICULO
+│   └── TipoOrdenacao.java     # Enum: MAIS_RECENTES, MAIS_ANTIGAS, GRAVIDADE_DECRESCENTE, etc.
 ├── repository/            # Camada de persistência desacoplada
 │   ├── OcorrenciaRepository.java      # Interface do repositório
 │   └── JsonOcorrenciaRepository.java  # Implementação local JSON offline (Jackson + Lock)
 ├── service/               # Regras de negócio e operações
-│   ├── OcorrenciaService.java         # Validações, cálculos de KPI e filtros
+│   ├── OcorrenciaService.java         # Validações, trava temporal de 10s, KPIs e filtros
 │   └── ValidacaoException.java        # Exceção customizada de negócio
 ├── util/                  # Utilitários auxiliares
 │   ├── DateUtils.java                 # Formatação de datas (dd/MM/yyyy HH:mm)
@@ -43,9 +51,9 @@ com.logistica.ocorrencias
 │   ├── DateTimeCellRenderer.java      # Renderizador formatado de datas
 │   ├── PlacaCellRenderer.java         # Renderizador monoespaçado para placas
 │   ├── KpiCard.java                   # Cartão moderno para métricas do topo
-│   ├── OcorrenciaFormPanel.java       # Formulário lateral para cadastro rápido
-│   ├── OcorrenciaDetailDialog.java    # Modal com histórico e detalhes completos
-│   ├── OcorrenciaTableModel.java      # TableModel customizado
+│   ├── OcorrenciaFormPanel.java       # Formulário lateral para cadastro rápido (com monitor)
+│   ├── OcorrenciaDetailDialog.java    # Modal com histórico, monitor e detalhes completos
+│   ├── OcorrenciaTableModel.java      # TableModel customizado (incluindo coluna Monitor)
 │   └── MainFrame.java                 # Janela principal do sistema
 └── App.java               # Ponto de entrada (FlatLaf Dark + inicialização na EDT)
 ```
@@ -120,12 +128,14 @@ O projeto conta com bateria de testes unitários desenvolvidos com **JUnit 5**:
 Testes inclusos:
 - Validação estrita de placas Mercosul e Tradicional (`PlacaValidatorTest`).
 - Ciclo de vida completo de persistência JSON local e atômica (`JsonOcorrenciaRepositoryTest`).
-- Regras de validação obrigatória de campos e cálculo de KPIs (`OcorrenciaServiceTest`).
+- Regras de validação obrigatória (incluindo Monitor Responsável) e cálculo de KPIs (`OcorrenciaServiceTest`).
+- Regra de trava temporal de carência de 10 segundos para alteração de gravidade (`OcorrenciaServiceTest`).
+- Ordenação e filtros por Mais Recentes e Mais Antigas (`OcorrenciaServiceTest`).
 
 ---
 
 ## 💾 Armazenamento dos Dados (`dados/ocorrencias.json`)
 
 - Os dados das ocorrências são persistidos automaticamente no arquivo `dados/ocorrencias.json`.
-- Na primeira execução do sistema, caso o arquivo não exista, o software o cria automaticamente e o popula com 5 incidentes realistas simulados para demonstração imediata das funcionalidades.
+- Na primeira execução do sistema, caso o arquivo não exista, o software o cria automaticamente e o popula com incidentes realistas simulados com identificação dos monitores de torre.
 - As gravações subsequentes utilizam arquivos temporários com substituição atômica (`StandardCopyOption.ATOMIC_MOVE`), garantindo segurança contra corrupção em caso de encerramento inesperado.

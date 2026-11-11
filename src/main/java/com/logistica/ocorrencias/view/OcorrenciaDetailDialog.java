@@ -103,9 +103,13 @@ public class OcorrenciaDetailDialog extends JDialog {
         adicionarCampo(contentPanel, gbc, row++, "Placa do Veículo:", PlacaValidator.formatarParaExibicao(ocorrencia.getPlacaVeiculo()),
                 "Motorista Responsável:", ocorrencia.getMotorista());
 
-        // Linha 3: Gravidade e Status
-        adicionarCampo(contentPanel, gbc, row++, "Nível de Gravidade:", ocorrencia.getGravidade().getDescricao(),
-                "Data de Resolução:", ocorrencia.getDataResolucao() != null ? DateUtils.formatar(ocorrencia.getDataResolucao()) : "Pendente / Em Aberto");
+        // Linha 3: Monitor e Gravidade
+        adicionarCampo(contentPanel, gbc, row++, "Monitor (Operador):", ocorrencia.getMonitor(),
+                "Nível de Gravidade:", ocorrencia.getGravidade().getDescricao());
+
+        // Linha 4: Data de Resolução
+        adicionarCampo(contentPanel, gbc, row++, "Data de Resolução:", ocorrencia.getDataResolucao() != null ? DateUtils.formatar(ocorrencia.getDataResolucao()) : "Pendente / Em Aberto",
+                "Status Atual:", ocorrencia.getStatus().getDescricao());
 
         // Linha 4: Descrição completa
         gbc.gridx = 0;

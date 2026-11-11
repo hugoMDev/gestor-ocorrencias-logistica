@@ -46,6 +46,7 @@ class JsonOcorrenciaRepositoryTest {
                 TipoOcorrencia.AVARIA,
                 "TEST1234",
                 "Motorista Teste",
+                "Monitor Teste",
                 Gravidade.ALTA,
                 StatusOcorrencia.PENDENTE,
                 "Descrição de teste unitário"
@@ -59,6 +60,7 @@ class JsonOcorrenciaRepositoryTest {
         Optional<Ocorrencia> encontrada = repo.findById("TEST-9999");
         assertTrue(encontrada.isPresent());
         assertEquals("Motorista Teste", encontrada.get().getMotorista());
+        assertEquals("Monitor Teste", encontrada.get().getMonitor());
 
         // Atualizar
         o.setStatus(StatusOcorrencia.RESOLVIDO);

@@ -5,7 +5,9 @@ import com.logistica.ocorrencias.model.Gravidade;
 import com.logistica.ocorrencias.model.Ocorrencia;
 import com.logistica.ocorrencias.model.PoloRegional;
 import com.logistica.ocorrencias.model.StatusOcorrencia;
+import com.logistica.ocorrencias.model.TipoOrdenacao;
 import com.logistica.ocorrencias.service.OcorrenciaService;
+import com.logistica.ocorrencias.service.ValidacaoException;
 import com.logistica.ocorrencias.util.DateUtils;
 
 import javax.swing.BorderFactory;
@@ -67,9 +69,11 @@ public class MainFrame extends JFrame {
     private JComboBox<Object> cbFiltroPolo;
     private JComboBox<Object> cbFiltroStatus;
     private JComboBox<Object> cbFiltroGravidade;
+    private JComboBox<TipoOrdenacao> cbOrdenacao;
 
     // Botões de Ação
     private JButton btnAlterarStatus;
+    private JButton btnAlterarGravidade;
     private JButton btnVerDetalhes;
     private JButton btnExcluir;
 
@@ -201,9 +205,10 @@ public class MainFrame extends JFrame {
         cbFiltroPolo.putClientProperty(FlatClientProperties.STYLE, "arc: 8;");
         cbFiltroPolo.addActionListener(e -> aplicarFiltros());
 
-        // Filtro por Status
+        // Filtro por Status com opção de ordenação rápida
         cbFiltroStatus = new JComboBox<>();
         cbFiltroStatus.addItem("Todos os Status");
+        cbFiltroStatus.addItem("Mais Recentes (Data/Hora Decrescente)");
         for (StatusOcorrencia s : StatusOcorrencia.values()) {
             cbFiltroStatus.addItem(s);
         }
@@ -219,6 +224,12 @@ public class MainFrame extends JFrame {
         cbFiltroGravidade.putClientProperty(FlatClientProperties.STYLE, "arc: 8;");
         cbFiltroGravidade.addActionListener(e -> aplicarFiltros());
 
+        // Controle de Ordenação Dedicado
+        cbOrdenacao = new JComboBox<>(TipoOrdenacao.values());
+        cbOrdenacao.setSelectedItem(TipoOrdenacao.MAIS_RECENTES);
+        cbOrdenacao.putClientProperty(FlatClientProperties.STYLE, "arc: 8;");
+        cbOrdenacao.addActionListener(e -> aplicarFiltros());
+
         JButton btnLimparFiltros = new JButton("Limpar Filtros");
         btnLimparFiltros.putClientProperty(FlatClientProperties.STYLE, "arc: 8;");
         btnLimparFiltros.addActionListener(e -> limparFiltros());
@@ -227,6 +238,7 @@ public class MainFrame extends JFrame {
         filterBar.add(cbFiltroPolo);
         filterBar.add(cbFiltroStatus);
         filterBar.add(cbFiltroGravidade);
+        filterBar.add(cbOrdenacao);
         filterBar.add(btnLimparFiltros);
 
         // Barra de Ações Rápidas (Direita / Topo da Tabela)
@@ -249,6 +261,11 @@ public class MainFrame extends JFrame {
         btnAlterarStatus.setEnabled(false);
         btnAlterarStatus.addActionListener(e -> exibirMenuAlterarStatus());
 
+        btnAlterarGravidade = new JButton("Alterar Gravidade");
+        btnAlterarGravidade.putClientProperty(FlatClientProperties.STYLE, "arc: 8;");
+        btnAlterarGravidade.setEnabled(false);
+        btnAlterarGravidade.addActionListener(e -> alterarGravidadeSelecionado());
+
         btnExcluir = new JButton("Excluir");
         btnExcluir.putClientProperty(FlatClientProperties.STYLE, "arc: 8; foreground: #f87171;");
         btnExcluir.setEnabled(false);
@@ -261,6 +278,7 @@ public class MainFrame extends JFrame {
         actionsToolBar.add(btnNovo);
         actionsToolBar.add(btnVerDetalhes);
         actionsToolBar.add(btnAlterarStatus);
+        actionsToolBar.add(btnAlterarGravidade);
         actionsToolBar.add(btnExcluir);
         actionsToolBar.add(btnExportar);
 
@@ -301,23 +319,39 @@ public class MainFrame extends JFrame {
         tabela.getColumnModel().getColumn(6).setCellRenderer(new BadgeCellRenderer());    // Gravidade
         tabela.getColumnModel().getColumn(7).setCellRenderer(new BadgeCellRenderer());    // Status
 
-        // Larguras preferenciais
+        // Larguras preferenciais das colunas
         tabela.getColumnModel().getColumn(0).setPreferredWidth(85);   // ID
         tabela.getColumnModel().getColumn(1).setPreferredWidth(125);  // Data/Hora
-        tabela.getColumnModel().getColumn(2).setPreferredWidth(190);  // Polo
-        tabela.getColumnModel().getColumn(3).setPreferredWidth(170);  // Tipo
+        tabela.getColumnModel().getColumn(2).setPreferredWidth(180);  // Polo
+        tabela.getColumnModel().getColumn(3).setPreferredWidth(160);  // Tipo
         tabela.getColumnModel().getColumn(4).setPreferredWidth(95);   // Placa
-        tabela.getColumnModel().getColumn(5).setPreferredWidth(150);  // Motorista
-        tabela.getColumnModel().getColumn(6).setPreferredWidth(110);  // Gravidade
-        tabela.getColumnModel().getColumn(7).setPreferredWidth(110);  // Status
-        tabela.getColumnModel().getColumn(8).setPreferredWidth(260);  // Descrição
+        tabela.getColumnModel().getColumn(5).setPreferredWidth(140);  // Motorista
+        tabela.getColumnModel().getColumn(6).setPreferredWidth(105);  // Gravidade
+        tabela.getColumnModel().getColumn(7).setPreferredWidth(105);  // Status
+        tabela.getColumnModel().getColumn(8).setPreferredWidth(140);  // Monitor
+        tabela.getColumnModel().getColumn(9).setPreferredWidth(230);  // Descrição
 
-        // Habilita/Desabilita botões conforme seleção
+        // Habilita/Desabilita botões conforme seleção e atualiza tooltip de carência
         tabela.getSelectionModel().addListSelectionListener(e -> {
             boolean hasSelection = tabela.getSelectedRow() >= 0;
             btnVerDetalhes.setEnabled(hasSelection);
             btnAlterarStatus.setEnabled(hasSelection);
+            btnAlterarGravidade.setEnabled(hasSelection);
             btnExcluir.setEnabled(hasSelection);
+
+            if (hasSelection) {
+                Ocorrencia sel = getOcorrenciaSelecionada();
+                if (sel != null) {
+                    long restam = service.obterSegundosRestantesCarenciaGravidade(sel);
+                    if (restam > 0) {
+                        btnAlterarGravidade.setToolTipText("Aguarde o período de carência de 10 segundos após o registro para alterar a gravidade (restam " + restam + " segundos)");
+                    } else {
+                        btnAlterarGravidade.setToolTipText("Alterar nível de gravidade");
+                    }
+                }
+            } else {
+                btnAlterarGravidade.setToolTipText(null);
+            }
         });
 
         // Duplo clique para abrir detalhes
@@ -382,9 +416,17 @@ public class MainFrame extends JFrame {
             polo = p;
         }
 
+        Object statusItem = cbFiltroStatus.getSelectedItem();
         StatusOcorrencia status = null;
-        if (cbFiltroStatus.getSelectedItem() instanceof StatusOcorrencia s) {
+        TipoOrdenacao ordenacao = (TipoOrdenacao) cbOrdenacao.getSelectedItem();
+
+        if (statusItem instanceof StatusOcorrencia s) {
             status = s;
+        } else if ("Mais Recentes (Data/Hora Decrescente)".equals(statusItem)) {
+            ordenacao = TipoOrdenacao.MAIS_RECENTES;
+            if (cbOrdenacao.getSelectedItem() != TipoOrdenacao.MAIS_RECENTES) {
+                cbOrdenacao.setSelectedItem(TipoOrdenacao.MAIS_RECENTES);
+            }
         }
 
         Gravidade gravidade = null;
@@ -392,12 +434,13 @@ public class MainFrame extends JFrame {
             gravidade = g;
         }
 
-        List<Ocorrencia> filtradas = service.filtrar(termo, polo, status, gravidade);
+        List<Ocorrencia> filtradas = service.filtrar(termo, polo, status, gravidade, ordenacao);
         tableModel.setOcorrencias(filtradas);
 
         int totalGeral = service.listarTodas().size();
-        lblStatusRodape.setText(String.format("Exibindo %d de %d ocorrências registradas | Filtros ativos: %s",
-                filtradas.size(), totalGeral, (termo.isBlank() && polo == null && status == null && gravidade == null) ? "Nenhum" : "Sim"));
+        boolean filtrosAtivos = !(termo.isBlank() && polo == null && status == null && gravidade == null && ordenacao == TipoOrdenacao.MAIS_RECENTES);
+        lblStatusRodape.setText(String.format("Exibindo %d de %d ocorrências | Ordenação: %s | Filtros ativos: %s",
+                filtradas.size(), totalGeral, ordenacao.getDescricao(), filtrosAtivos ? "Sim" : "Nenhum"));
     }
 
     private void limparFiltros() {
@@ -405,6 +448,7 @@ public class MainFrame extends JFrame {
         cbFiltroPolo.setSelectedIndex(0);
         cbFiltroStatus.setSelectedIndex(0);
         cbFiltroGravidade.setSelectedIndex(0);
+        cbOrdenacao.setSelectedItem(TipoOrdenacao.MAIS_RECENTES);
         aplicarFiltros();
     }
 
@@ -463,6 +507,52 @@ public class MainFrame extends JFrame {
         menu.show(btnAlterarStatus, 0, btnAlterarStatus.getHeight());
     }
 
+    /**
+     * Altera a gravidade da ocorrência selecionada, respeitando a trava de carência de 10 segundos.
+     */
+    private void alterarGravidadeSelecionado() {
+        Ocorrencia o = getOcorrenciaSelecionada();
+        if (o == null) return;
+
+        // Regra de Trava Temporal (10 segundos)
+        long restam = service.obterSegundosRestantesCarenciaGravidade(o);
+        if (restam > 0) {
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Aguarde o período de carência de 10 segundos após o registro para alterar a gravidade (restam " + restam + " segundos)",
+                    "Período de Carência Ativo",
+                    JOptionPane.WARNING_MESSAGE
+            );
+            return;
+        }
+
+        Gravidade[] opcoes = Gravidade.values();
+        Gravidade selecionada = (Gravidade) JOptionPane.showInputDialog(
+                this,
+                "Selecione o novo nível de gravidade para a ocorrência " + o.getId() + ":",
+                "Alterar Gravidade da Ocorrência",
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                opcoes,
+                o.getGravidade()
+        );
+
+        if (selecionada != null && selecionada != o.getGravidade()) {
+            try {
+                service.alterarGravidade(o.getId(), selecionada);
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Gravidade da ocorrência " + o.getId() + " alterada para: " + selecionada.getDescricao(),
+                        "Gravidade Atualizada",
+                        JOptionPane.INFORMATION_MESSAGE
+                );
+                atualizarDadosCompletos();
+            } catch (ValidacaoException ex) {
+                JOptionPane.showMessageDialog(this, ex.getMessage(), "Atenção na Validação", JOptionPane.WARNING_MESSAGE);
+            }
+        }
+    }
+
     private void excluirSelecionado() {
         Ocorrencia o = getOcorrenciaSelecionada();
         if (o == null) return;
@@ -506,18 +596,19 @@ public class MainFrame extends JFrame {
                 // BOM UTF-8 para correta abertura no Excel brasileiro
                 pw.write('\ufeff');
 
-                // Cabeçalho
-                pw.println("ID;Data/Hora;Polo Regional;Tipo;Placa;Motorista;Gravidade;Status;Descricao;Data Resolucao;Obs Resolucao");
+                // Cabeçalho com o campo Monitor
+                pw.println("ID;Data/Hora;Polo Regional;Tipo;Placa;Motorista;Monitor;Gravidade;Status;Descricao;Data Resolucao;Obs Resolucao");
 
                 for (int i = 0; i < tableModel.getRowCount(); i++) {
                     Ocorrencia o = tableModel.getOcorrenciaAt(i);
-                    pw.printf("%s;%s;%s;%s;%s;%s;%s;%s;\"%s\";%s;\"%s\"%n",
+                    pw.printf("%s;%s;%s;%s;%s;%s;%s;%s;%s;\"%s\";%s;\"%s\"%n",
                             o.getId(),
                             DateUtils.formatar(o.getDataHora()),
                             o.getPoloRegional().name(),
                             o.getTipoOcorrencia().name(),
                             o.getPlacaVeiculo(),
                             o.getMotorista().replace(";", ","),
+                            o.getMonitor().replace(";", ","),
                             o.getGravidade().name(),
                             o.getStatus().name(),
                             o.getDescricao().replace("\"", "\"\"").replace("\n", " "),

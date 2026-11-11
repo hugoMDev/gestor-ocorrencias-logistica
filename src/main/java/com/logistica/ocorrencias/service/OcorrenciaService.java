@@ -5,9 +5,11 @@ import com.logistica.ocorrencias.model.Ocorrencia;
 import com.logistica.ocorrencias.model.PoloRegional;
 import com.logistica.ocorrencias.model.StatusOcorrencia;
 import com.logistica.ocorrencias.model.TipoOcorrencia;
+import com.logistica.ocorrencias.model.TipoOrdenacao;
 import com.logistica.ocorrencias.repository.OcorrenciaRepository;
 import com.logistica.ocorrencias.util.PlacaValidator;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -58,6 +60,9 @@ public class OcorrenciaService {
         // Normaliza placa veicular para maiúsculas sem traços
         ocorrencia.setPlacaVeiculo(PlacaValidator.normalizar(ocorrencia.getPlacaVeiculo()));
         ocorrencia.setMotorista(ocorrencia.getMotorista().trim());
+        if (ocorrencia.getMonitor() != null) {
+            ocorrencia.setMonitor(ocorrencia.getMonitor().trim());
+        }
         ocorrencia.setDescricao(ocorrencia.getDescricao().trim());
 
         return repository.save(ocorrencia);
@@ -89,6 +94,10 @@ public class OcorrenciaService {
 
         if (ocorrencia.getMotorista() == null || ocorrencia.getMotorista().trim().length() < 3) {
             throw new ValidacaoException("O nome do motorista é obrigatório e deve ter pelo menos 3 caracteres.");
+        }
+
+        if (ocorrencia.getMonitor() == null || ocorrencia.getMonitor().trim().length() < 3) {
+            throw new ValidacaoException("O nome do monitor responsável é obrigatório e deve ter pelo menos 3 caracteres.");
         }
 
         if (ocorrencia.getGravidade() == null) {
@@ -123,6 +132,40 @@ public class OcorrenciaService {
     }
 
     /**
+     * Altera a gravidade da ocorrência respeitando a regra de trava temporal de carência de 10 segundos.
+     */
+    public Ocorrencia alterarGravidade(String id, Gravidade novaGravidade) {
+        Optional<Ocorrencia> op = repository.findById(id);
+        if (op.isEmpty()) {
+            throw new ValidacaoException("Ocorrência não encontrada com o ID: " + id);
+        }
+
+        Ocorrencia o = op.get();
+        long segundosRestantes = obterSegundosRestantesCarenciaGravidade(o);
+        if (segundosRestantes > 0) {
+            throw new ValidacaoException("Aguarde o período de carência de 10 segundos após o registro para alterar a gravidade (restam " + segundosRestantes + " segundos)");
+        }
+
+        if (novaGravidade == null) {
+            throw new ValidacaoException("Selecione um nível de gravidade válido.");
+        }
+
+        o.setGravidade(novaGravidade);
+        return repository.save(o);
+    }
+
+    /**
+     * Calcula quantos segundos restam no período de carência de 10 segundos para alteração da gravidade.
+     */
+    public long obterSegundosRestantesCarenciaGravidade(Ocorrencia ocorrencia) {
+        if (ocorrencia == null || ocorrencia.getDataHora() == null) {
+            return 0;
+        }
+        long segundosDecorridos = Duration.between(ocorrencia.getDataHora(), LocalDateTime.now()).toSeconds();
+        return (segundosDecorridos < 10) ? Math.max(1, 10 - segundosDecorridos) : 0;
+    }
+
+    /**
      * Exclui uma ocorrência pelo ID.
      */
     public boolean excluir(String id) {
@@ -149,22 +192,40 @@ public class OcorrenciaService {
     }
 
     /**
-     * Filtra ocorrências por termo textual e filtros opcionais de categoria.
+     * Filtra ocorrências por termo textual e filtros opcionais de categoria (ordenação padrão por Mais Recentes).
      */
     public List<Ocorrencia> filtrar(String termo, PoloRegional polo, StatusOcorrencia status, Gravidade gravidade) {
+        return filtrar(termo, polo, status, gravidade, TipoOrdenacao.MAIS_RECENTES);
+    }
+
+    /**
+     * Filtra ocorrências por termo textual, filtros opcionais e critério de ordenação customizado.
+     */
+    public List<Ocorrencia> filtrar(String termo, PoloRegional polo, StatusOcorrencia status, Gravidade gravidade, TipoOrdenacao ordenacao) {
         String termoBusca = (termo != null) ? termo.trim().toLowerCase(Locale.ROOT) : "";
+        TipoOrdenacao ord = (ordenacao != null) ? ordenacao : TipoOrdenacao.MAIS_RECENTES;
+
+        Comparator<Ocorrencia> comparator = switch (ord) {
+            case MAIS_RECENTES -> Comparator.comparing(Ocorrencia::getDataHora, Comparator.nullsLast(Comparator.reverseOrder()));
+            case MAIS_ANTIGAS -> Comparator.comparing(Ocorrencia::getDataHora, Comparator.nullsLast(Comparator.naturalOrder()));
+            case GRAVIDADE_DECRESCENTE -> Comparator.comparingInt((Ocorrencia o) -> o.getGravidade().getNivel()).reversed()
+                    .thenComparing(Ocorrencia::getDataHora, Comparator.nullsLast(Comparator.reverseOrder()));
+            case GRAVIDADE_CRESCENTE -> Comparator.comparingInt((Ocorrencia o) -> o.getGravidade().getNivel())
+                    .thenComparing(Ocorrencia::getDataHora, Comparator.nullsLast(Comparator.reverseOrder()));
+        };
 
         return repository.findAll().stream()
                 .filter(o -> {
-                    // Filtro de texto (busca em ID, Placa, Motorista, Descrição e Tipo)
+                    // Filtro de texto (busca em ID, Placa, Motorista, Monitor, Descrição e Tipo)
                     if (!termoBusca.isEmpty()) {
                         boolean matchId = o.getId() != null && o.getId().toLowerCase().contains(termoBusca);
                         boolean matchPlaca = o.getPlacaVeiculo() != null && o.getPlacaVeiculo().toLowerCase().contains(termoBusca);
                         boolean matchMotorista = o.getMotorista() != null && o.getMotorista().toLowerCase().contains(termoBusca);
+                        boolean matchMonitor = o.getMonitor() != null && o.getMonitor().toLowerCase().contains(termoBusca);
                         boolean matchDesc = o.getDescricao() != null && o.getDescricao().toLowerCase().contains(termoBusca);
                         boolean matchTipo = o.getTipoOcorrencia() != null && o.getTipoOcorrencia().getDescricao().toLowerCase().contains(termoBusca);
 
-                        if (!matchId && !matchPlaca && !matchMotorista && !matchDesc && !matchTipo) {
+                        if (!matchId && !matchPlaca && !matchMotorista && !matchMonitor && !matchDesc && !matchTipo) {
                             return false;
                         }
                     }
@@ -186,7 +247,7 @@ public class OcorrenciaService {
 
                     return true;
                 })
-                .sorted(Comparator.comparing(Ocorrencia::getDataHora, Comparator.nullsLast(Comparator.reverseOrder())))
+                .sorted(comparator)
                 .collect(Collectors.toList());
     }
 

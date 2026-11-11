@@ -43,6 +43,7 @@ public class OcorrenciaFormPanel extends JPanel {
     private JComboBox<TipoOcorrencia> cbTipo;
     private JTextField txtPlaca;
     private JTextField txtMotorista;
+    private JTextField txtMonitor;
     private JComboBox<Gravidade> cbGravidade;
     private JTextArea txtDescricao;
 
@@ -135,7 +136,18 @@ public class OcorrenciaFormPanel extends JPanel {
         gbc.gridy = row++;
         formGrid.add(txtMotorista, gbc);
 
-        // 5. Gravidade
+        // 5. Monitor Responsável (Operador que registra)
+        gbc.gridy = row++;
+        formGrid.add(criarLabel("Monitor Responsável (Operador):"), gbc);
+
+        txtMonitor = new JTextField();
+        txtMonitor.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Nome de quem registra a ocorrência");
+        txtMonitor.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
+        txtMonitor.putClientProperty(FlatClientProperties.STYLE, "arc: 8;");
+        gbc.gridy = row++;
+        formGrid.add(txtMonitor, gbc);
+
+        // 6. Gravidade
         gbc.gridy = row++;
         formGrid.add(criarLabel("Nível de Gravidade:"), gbc);
 
@@ -223,6 +235,7 @@ public class OcorrenciaFormPanel extends JPanel {
                     (TipoOcorrencia) cbTipo.getSelectedItem(),
                     txtPlaca.getText(),
                     txtMotorista.getText(),
+                    txtMonitor.getText(),
                     (Gravidade) cbGravidade.getSelectedItem(),
                     StatusOcorrencia.PENDENTE,
                     txtDescricao.getText()
@@ -264,6 +277,7 @@ public class OcorrenciaFormPanel extends JPanel {
         cbTipo.setSelectedIndex(0);
         txtPlaca.setText("");
         txtMotorista.setText("");
+        txtMonitor.setText("");
         cbGravidade.setSelectedItem(Gravidade.MEDIA);
         txtDescricao.setText("");
         txtPlaca.requestFocus();

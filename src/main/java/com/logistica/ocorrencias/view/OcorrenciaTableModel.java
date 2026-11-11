@@ -26,6 +26,7 @@ public class OcorrenciaTableModel extends AbstractTableModel {
             "Motorista",
             "Gravidade",
             "Status",
+            "Monitor",
             "Descrição"
     };
 
@@ -38,6 +39,7 @@ public class OcorrenciaTableModel extends AbstractTableModel {
             String.class,
             Gravidade.class,
             StatusOcorrencia.class,
+            String.class,
             String.class
     };
 
@@ -105,7 +107,8 @@ public class OcorrenciaTableModel extends AbstractTableModel {
             case 5 -> o.getMotorista();
             case 6 -> o.getGravidade();
             case 7 -> o.getStatus();
-            case 8 -> o.getDescricao();
+            case 8 -> o.getMonitor();
+            case 9 -> o.getDescricao();
             default -> null;
         };
     }

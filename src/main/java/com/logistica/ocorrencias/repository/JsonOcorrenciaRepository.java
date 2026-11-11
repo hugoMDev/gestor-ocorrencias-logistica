@@ -178,6 +178,7 @@ public class JsonOcorrenciaRepository implements OcorrenciaRepository {
                 TipoOcorrencia.AVARIA,
                 "BRA2E19",
                 "Carlos Eduardo Santos",
+                "Juliana Rocha (Torre 01)",
                 Gravidade.ALTA,
                 StatusOcorrencia.PENDENTE,
                 "Queda de 3 paletes de eletroeletrônicos durante manobra de descarga na doca 04 do CD Central."
@@ -190,6 +191,7 @@ public class JsonOcorrenciaRepository implements OcorrenciaRepository {
                 TipoOcorrencia.FALHA_VEICULO,
                 "RKL4F82",
                 "Marcos Vinicius Lima",
+                "Lucas Pires (CCO)",
                 Gravidade.CRITICA,
                 StatusOcorrencia.EM_ANALISE,
                 "Superaquecimento do motor e vazamento de fluido hidráulico na Rodovia Anhanguera km 122. Veículo com carga química."
@@ -202,6 +204,7 @@ public class JsonOcorrenciaRepository implements OcorrenciaRepository {
                 TipoOcorrencia.DESVIO_ROTA,
                 "ABC7890",
                 "Fernando Souza Ribeiro",
+                "Beatriz Lima (Telemetria)",
                 Gravidade.MEDIA,
                 StatusOcorrencia.EM_ANALISE,
                 "Alerta de telemetria apontou desvio do corredor de segurança na Rodovia Presidente Dutra sem aviso prévio."
@@ -214,6 +217,7 @@ public class JsonOcorrenciaRepository implements OcorrenciaRepository {
                 TipoOcorrencia.ATRASO_CARGA,
                 "GHT3J45",
                 "Roberto Albuquerque",
+                "Rafael Souza (Expedição)",
                 Gravidade.BAIXA,
                 StatusOcorrencia.RESOLVIDO,
                 "Atraso de 90 minutos devido a congestionamento intenso na Marginal Tietê. Cliente notificado e entrega concluída."
@@ -228,6 +232,7 @@ public class JsonOcorrenciaRepository implements OcorrenciaRepository {
                 TipoOcorrencia.SINISTRO,
                 "MNO9012",
                 "Luciano Mendes",
+                "Mariana Silva (Controle)",
                 Gravidade.CRITICA,
                 StatusOcorrencia.RESOLVIDO,
                 "Colisão lateral leve com defensa metálica em trecho de pista molhada na BR-116. Sem vítimas, guincho acionado."
