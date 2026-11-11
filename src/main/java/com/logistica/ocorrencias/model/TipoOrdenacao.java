@@ -5,9 +5,7 @@ package com.logistica.ocorrencias.model;
  */
 public enum TipoOrdenacao {
     MAIS_RECENTES("Mais Recentes (Data/Hora Decrescente)"),
-    MAIS_ANTIGAS("Mais Antigas (Data/Hora Crescente)"),
-    GRAVIDADE_DECRESCENTE("Maior Gravidade (Crítica Primeiro)"),
-    GRAVIDADE_CRESCENTE("Menor Gravidade (Baixa Primeiro)");
+    MAIS_ANTIGOS("Mais Antigos (Data/Hora Crescente)");
 
     private final String descricao;
 

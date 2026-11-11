@@ -12,6 +12,7 @@ import com.logistica.ocorrencias.util.DateUtils;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
+import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
@@ -26,6 +27,8 @@ import javax.swing.JSplitPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
+import javax.swing.ScrollPaneConstants;
+import javax.swing.table.TableColumn;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -178,13 +181,19 @@ public class MainFrame extends JFrame {
         JPanel centerPanel = new JPanel(new BorderLayout(0, 10));
         centerPanel.setBorder(BorderFactory.createEmptyBorder(14, 16, 12, 16));
 
-        // Barra superior de Filtros e Busca
-        JPanel filterBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 4));
+        // Painel Superior de Controles organizado em duas linhas flexíveis
+        JPanel topControls = new JPanel();
+        topControls.setLayout(new BoxLayout(topControls, BoxLayout.Y_AXIS));
+        topControls.setOpaque(false);
+        topControls.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+
+        // Linha 1: Filtros de Categoria e Pesquisa
+        JPanel filterBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
         filterBar.setOpaque(false);
 
         // Campo de Busca
-        txtBusca = new JTextField(18);
-        txtBusca.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "🔍 Buscar placa, motorista, termo...");
+        txtBusca = new JTextField(16);
+        txtBusca.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "🔍 Buscar placa, motorista, monitor...");
         txtBusca.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
         txtBusca.putClientProperty(FlatClientProperties.STYLE, "arc: 8;");
         txtBusca.getDocument().addDocumentListener(new DocumentListener() {
@@ -205,10 +214,9 @@ public class MainFrame extends JFrame {
         cbFiltroPolo.putClientProperty(FlatClientProperties.STYLE, "arc: 8;");
         cbFiltroPolo.addActionListener(e -> aplicarFiltros());
 
-        // Filtro por Status com opção de ordenação rápida
+        // Filtro por Status (exclusivo para Status: Todos, Pendente, Em Análise, Resolvido)
         cbFiltroStatus = new JComboBox<>();
         cbFiltroStatus.addItem("Todos os Status");
-        cbFiltroStatus.addItem("Mais Recentes (Data/Hora Decrescente)");
         for (StatusOcorrencia s : StatusOcorrencia.values()) {
             cbFiltroStatus.addItem(s);
         }
@@ -224,12 +232,6 @@ public class MainFrame extends JFrame {
         cbFiltroGravidade.putClientProperty(FlatClientProperties.STYLE, "arc: 8;");
         cbFiltroGravidade.addActionListener(e -> aplicarFiltros());
 
-        // Controle de Ordenação Dedicado
-        cbOrdenacao = new JComboBox<>(TipoOrdenacao.values());
-        cbOrdenacao.setSelectedItem(TipoOrdenacao.MAIS_RECENTES);
-        cbOrdenacao.putClientProperty(FlatClientProperties.STYLE, "arc: 8;");
-        cbOrdenacao.addActionListener(e -> aplicarFiltros());
-
         JButton btnLimparFiltros = new JButton("Limpar Filtros");
         btnLimparFiltros.putClientProperty(FlatClientProperties.STYLE, "arc: 8;");
         btnLimparFiltros.addActionListener(e -> limparFiltros());
@@ -238,11 +240,30 @@ public class MainFrame extends JFrame {
         filterBar.add(cbFiltroPolo);
         filterBar.add(cbFiltroStatus);
         filterBar.add(cbFiltroGravidade);
-        filterBar.add(cbOrdenacao);
         filterBar.add(btnLimparFiltros);
 
-        // Barra de Ações Rápidas (Direita / Topo da Tabela)
-        JPanel actionsToolBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 4));
+        // Linha 2: Seletor Dedicado de Ordenação (à esquerda) e Botões de Ação (à direita)
+        JPanel actionsRow = new JPanel(new BorderLayout(10, 0));
+        actionsRow.setOpaque(false);
+
+        // Seletor Dedicado de Ordenação
+        JPanel panelOrdenacao = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 4));
+        panelOrdenacao.setOpaque(false);
+
+        JLabel lblOrdenacao = new JLabel("Ordenação:");
+        lblOrdenacao.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        lblOrdenacao.setForeground(new Color(156, 163, 175));
+
+        cbOrdenacao = new JComboBox<>(TipoOrdenacao.values());
+        cbOrdenacao.setSelectedItem(TipoOrdenacao.MAIS_RECENTES);
+        cbOrdenacao.putClientProperty(FlatClientProperties.STYLE, "arc: 8;");
+        cbOrdenacao.addActionListener(e -> aplicarFiltros());
+
+        panelOrdenacao.add(lblOrdenacao);
+        panelOrdenacao.add(cbOrdenacao);
+
+        // Barra de Ações Operacionais (Direita)
+        JPanel actionsToolBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 4));
         actionsToolBar.setOpaque(false);
 
         JButton btnNovo = new JButton("+ Novo Registro");
@@ -282,29 +303,34 @@ public class MainFrame extends JFrame {
         actionsToolBar.add(btnExcluir);
         actionsToolBar.add(btnExportar);
 
-        JPanel topControls = new JPanel(new BorderLayout());
-        topControls.setOpaque(false);
-        topControls.add(filterBar, BorderLayout.WEST);
-        topControls.add(actionsToolBar, BorderLayout.EAST);
+        actionsRow.add(panelOrdenacao, BorderLayout.WEST);
+        actionsRow.add(actionsToolBar, BorderLayout.EAST);
+
+        topControls.add(filterBar);
+        topControls.add(actionsRow);
 
         centerPanel.add(topControls, BorderLayout.NORTH);
 
-        // Configuração da JTable
+        // Configuração da JTable com barra de rolagem horizontal habilitada conforme necessário
         tableModel = new OcorrenciaTableModel();
         tabela = new JTable(tableModel);
         configurarTabela();
 
         JScrollPane scrollTabela = new JScrollPane(tabela);
         scrollTabela.setBorder(BorderFactory.createLineBorder(new Color(55, 65, 81)));
+        scrollTabela.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        scrollTabela.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
         centerPanel.add(scrollTabela, BorderLayout.CENTER);
 
         return centerPanel;
     }
 
     /**
-     * Configura propriedades estéticas, renderizadores e eventos da JTable.
+     * Configura propriedades estéticas, renderizadores, rolagem e larguras da JTable.
      */
     private void configurarTabela() {
+        // Desativa o redimensionamento forçado para permitir rolagem horizontal suave
+        tabela.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
         tabela.setRowHeight(36);
         tabela.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         tabela.setShowVerticalLines(false);
@@ -319,17 +345,17 @@ public class MainFrame extends JFrame {
         tabela.getColumnModel().getColumn(6).setCellRenderer(new BadgeCellRenderer());    // Gravidade
         tabela.getColumnModel().getColumn(7).setCellRenderer(new BadgeCellRenderer());    // Status
 
-        // Larguras preferenciais das colunas
-        tabela.getColumnModel().getColumn(0).setPreferredWidth(85);   // ID
-        tabela.getColumnModel().getColumn(1).setPreferredWidth(125);  // Data/Hora
-        tabela.getColumnModel().getColumn(2).setPreferredWidth(180);  // Polo
-        tabela.getColumnModel().getColumn(3).setPreferredWidth(160);  // Tipo
-        tabela.getColumnModel().getColumn(4).setPreferredWidth(95);   // Placa
-        tabela.getColumnModel().getColumn(5).setPreferredWidth(140);  // Motorista
-        tabela.getColumnModel().getColumn(6).setPreferredWidth(105);  // Gravidade
-        tabela.getColumnModel().getColumn(7).setPreferredWidth(105);  // Status
-        tabela.getColumnModel().getColumn(8).setPreferredWidth(140);  // Monitor
-        tabela.getColumnModel().getColumn(9).setPreferredWidth(230);  // Descrição
+        // Larguras mínimas e preferenciais confortáveis para as colunas
+        definirLarguraColuna(0, 100, 120); // ID: 120px
+        definirLarguraColuna(1, 130, 140); // Data/Hora: 140px
+        definirLarguraColuna(2, 180, 200); // Polo: 200px
+        definirLarguraColuna(3, 190, 220); // Tipo: 220px
+        definirLarguraColuna(4, 90, 100);  // Placa: 100px
+        definirLarguraColuna(5, 150, 180); // Motorista: 180px
+        definirLarguraColuna(6, 90, 100);  // Gravidade: 100px
+        definirLarguraColuna(7, 100, 110); // Status: 110px
+        definirLarguraColuna(8, 150, 180); // Monitor: 180px
+        definirLarguraColuna(9, 280, 350); // Descrição: 350px
 
         // Habilita/Desabilita botões conforme seleção e atualiza tooltip de carência
         tabela.getSelectionModel().addListSelectionListener(e -> {
@@ -363,6 +389,12 @@ public class MainFrame extends JFrame {
                 }
             }
         });
+    }
+
+    private void definirLarguraColuna(int index, int minWidth, int prefWidth) {
+        TableColumn col = tabela.getColumnModel().getColumn(index);
+        col.setMinWidth(minWidth);
+        col.setPreferredWidth(prefWidth);
     }
 
     /**
@@ -416,17 +448,14 @@ public class MainFrame extends JFrame {
             polo = p;
         }
 
-        Object statusItem = cbFiltroStatus.getSelectedItem();
         StatusOcorrencia status = null;
-        TipoOrdenacao ordenacao = (TipoOrdenacao) cbOrdenacao.getSelectedItem();
-
-        if (statusItem instanceof StatusOcorrencia s) {
+        if (cbFiltroStatus.getSelectedItem() instanceof StatusOcorrencia s) {
             status = s;
-        } else if ("Mais Recentes (Data/Hora Decrescente)".equals(statusItem)) {
+        }
+
+        TipoOrdenacao ordenacao = (TipoOrdenacao) cbOrdenacao.getSelectedItem();
+        if (ordenacao == null) {
             ordenacao = TipoOrdenacao.MAIS_RECENTES;
-            if (cbOrdenacao.getSelectedItem() != TipoOrdenacao.MAIS_RECENTES) {
-                cbOrdenacao.setSelectedItem(TipoOrdenacao.MAIS_RECENTES);
-            }
         }
 
         Gravidade gravidade = null;

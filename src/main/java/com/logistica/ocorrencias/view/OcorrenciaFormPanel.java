@@ -8,6 +8,7 @@ import com.logistica.ocorrencias.model.StatusOcorrencia;
 import com.logistica.ocorrencias.model.TipoOcorrencia;
 import com.logistica.ocorrencias.service.OcorrenciaService;
 import com.logistica.ocorrencias.service.ValidacaoException;
+import com.logistica.ocorrencias.util.PlacaDocumentFilter;
 
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
@@ -121,7 +122,7 @@ public class OcorrenciaFormPanel extends JPanel {
         txtPlaca.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "Ex: ABC1D23 ou ABC-1234");
         txtPlaca.putClientProperty(FlatClientProperties.TEXT_FIELD_SHOW_CLEAR_BUTTON, true);
         txtPlaca.putClientProperty(FlatClientProperties.STYLE, "arc: 8;");
-        aplicarFiltroCaixaAlta(txtPlaca, 8);
+        ((AbstractDocument) txtPlaca.getDocument()).setDocumentFilter(new PlacaDocumentFilter());
         gbc.gridy = row++;
         formGrid.add(txtPlaca, gbc);
 

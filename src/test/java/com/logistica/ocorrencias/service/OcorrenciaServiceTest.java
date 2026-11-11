@@ -211,7 +211,7 @@ class OcorrenciaServiceTest {
             assertTrue(d1.isAfter(d2) || d1.isEqual(d2), "Deve estar em ordem decrescente");
         }
 
-        List<Ocorrencia> maisAntigas = service.filtrar(null, null, null, null, TipoOrdenacao.MAIS_ANTIGAS);
+        List<Ocorrencia> maisAntigas = service.filtrar(null, null, null, null, TipoOrdenacao.MAIS_ANTIGOS);
         for (int i = 0; i < maisAntigas.size() - 1; i++) {
             LocalDateTime d1 = maisAntigas.get(i).getDataHora();
             LocalDateTime d2 = maisAntigas.get(i + 1).getDataHora();

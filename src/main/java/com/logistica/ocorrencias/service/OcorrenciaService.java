@@ -207,11 +207,7 @@ public class OcorrenciaService {
 
         Comparator<Ocorrencia> comparator = switch (ord) {
             case MAIS_RECENTES -> Comparator.comparing(Ocorrencia::getDataHora, Comparator.nullsLast(Comparator.reverseOrder()));
-            case MAIS_ANTIGAS -> Comparator.comparing(Ocorrencia::getDataHora, Comparator.nullsLast(Comparator.naturalOrder()));
-            case GRAVIDADE_DECRESCENTE -> Comparator.comparingInt((Ocorrencia o) -> o.getGravidade().getNivel()).reversed()
-                    .thenComparing(Ocorrencia::getDataHora, Comparator.nullsLast(Comparator.reverseOrder()));
-            case GRAVIDADE_CRESCENTE -> Comparator.comparingInt((Ocorrencia o) -> o.getGravidade().getNivel())
-                    .thenComparing(Ocorrencia::getDataHora, Comparator.nullsLast(Comparator.reverseOrder()));
+            case MAIS_ANTIGOS -> Comparator.comparing(Ocorrencia::getDataHora, Comparator.nullsLast(Comparator.naturalOrder()));
         };
 
         return repository.findAll().stream()
