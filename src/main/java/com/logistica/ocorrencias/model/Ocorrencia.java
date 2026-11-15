@@ -1,197 +1,77 @@
 package com.logistica.ocorrencias.model;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.logistica.ocorrencias.util.JsonDateDeserializer;
-import com.logistica.ocorrencias.util.JsonDateSerializer;
-import java.io.Serializable;
+import com.fasterxml.jackson.annotation.JsonAlias;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.time.LocalDateTime;
-import java.util.Objects;
 import java.util.UUID;
 
-/**
- * Entidade central representando um incidente/ocorrência operacional de transporte.
- */
-public class Ocorrencia implements Serializable {
+@Entity
+@Table(name = "ocorrencias")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Ocorrencia {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
-    private static final long serialVersionUID = 1L;
+    @Column(unique = true)
+    @JsonAlias({"codigo", "codigo_oco"})
+    private String codigoOco = "OCO-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
-    private String id;
+    @Column
+    @JsonAlias({"data_hora"})
+    private LocalDateTime dataHora = LocalDateTime.now();
 
-    @JsonSerialize(using = JsonDateSerializer.class)
-    @JsonDeserialize(using = JsonDateDeserializer.class)
-    private LocalDateTime dataHora;
+    @Column
+    @JsonAlias({"polo_regional"})
+    private String poloRegional;
 
-    private PoloRegional poloRegional;
-    private TipoOcorrencia tipoOcorrencia;
+    @Column
+    @JsonAlias({"tipo_ocorrencia"})
+    private String tipoOcorrencia;
+
+    @Column(length = 10)
+    @JsonAlias({"placa", "placa_veiculo"})
     private String placaVeiculo;
+
+    @Column
     private String motorista;
-    private String monitor;
-    private Gravidade gravidade;
-    private StatusOcorrencia status;
-    private String descricao;
 
-    @JsonSerialize(using = JsonDateSerializer.class)
-    @JsonDeserialize(using = JsonDateDeserializer.class)
-    private LocalDateTime dataResolucao;
+    @Column
+    private String gravidade = "MEDIA";
 
-    private String observacaoResolucao;
+    @Column
+    private String status = "PENDENTE";
 
-    /**
-     * Construtor padrão exigido pelo Jackson para deserialização JSON.
-     */
-    public Ocorrencia() {
-    }
+    @Column
+    @JsonAlias({"monitor", "monitor_responsavel"})
+    private String monitorResponsavel = "Operador Central";
 
-    /**
-     * Construtor completo para novas ocorrências com monitor responsável.
-     */
-    public Ocorrencia(String id, LocalDateTime dataHora, PoloRegional poloRegional,
-                      TipoOcorrencia tipoOcorrencia, String placaVeiculo, String motorista,
-                      String monitor, Gravidade gravidade, StatusOcorrencia status, String descricao) {
-        this.id = (id != null && !id.isBlank()) ? id : UUID.randomUUID().toString();
-        this.dataHora = (dataHora != null) ? dataHora : LocalDateTime.now();
-        this.poloRegional = poloRegional;
-        this.tipoOcorrencia = tipoOcorrencia;
-        this.placaVeiculo = placaVeiculo;
-        this.motorista = motorista;
-        this.monitor = monitor;
-        this.gravidade = gravidade;
-        this.status = (status != null) ? status : StatusOcorrencia.PENDENTE;
-        this.descricao = descricao;
-    }
+    @Column(columnDefinition = "TEXT")
+    @JsonAlias({"descricao", "descricao_fatos"})
+    private String descricaoFatos;
 
-    /**
-     * Construtor de compatibilidade para ocorrências sem monitor explícito.
-     */
-    public Ocorrencia(String id, LocalDateTime dataHora, PoloRegional poloRegional,
-                      TipoOcorrencia tipoOcorrencia, String placaVeiculo, String motorista,
-                      Gravidade gravidade, StatusOcorrencia status, String descricao) {
-        this(id, dataHora, poloRegional, tipoOcorrencia, placaVeiculo, motorista, "Operador Central", gravidade, status, descricao);
-    }
-
-    // Getters e Setters
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public LocalDateTime getDataHora() {
-        return dataHora;
-    }
-
-    public void setDataHora(LocalDateTime dataHora) {
-        this.dataHora = dataHora;
-    }
-
-    public PoloRegional getPoloRegional() {
-        return poloRegional;
-    }
-
-    public void setPoloRegional(PoloRegional poloRegional) {
-        this.poloRegional = poloRegional;
-    }
-
-    public TipoOcorrencia getTipoOcorrencia() {
-        return tipoOcorrencia;
-    }
-
-    public void setTipoOcorrencia(TipoOcorrencia tipoOcorrencia) {
-        this.tipoOcorrencia = tipoOcorrencia;
-    }
-
-    public String getPlacaVeiculo() {
-        return placaVeiculo;
-    }
-
-    public void setPlacaVeiculo(String placaVeiculo) {
-        this.placaVeiculo = placaVeiculo;
-    }
-
-    public String getMotorista() {
-        return motorista;
-    }
-
-    public void setMotorista(String motorista) {
-        this.motorista = motorista;
-    }
-
-    public String getMonitor() {
-        return (monitor != null && !monitor.isBlank()) ? monitor : "Operador Central";
-    }
-
-    public void setMonitor(String monitor) {
-        this.monitor = monitor;
-    }
-
-    public Gravidade getGravidade() {
-        return gravidade;
-    }
-
-    public void setGravidade(Gravidade gravidade) {
-        this.gravidade = gravidade;
-    }
-
-    public StatusOcorrencia getStatus() {
-        return status;
-    }
-
-    public void setStatus(StatusOcorrencia status) {
-        this.status = status;
-    }
-
-    public String getDescricao() {
-        return descricao;
-    }
-
-    public void setDescricao(String descricao) {
-        this.descricao = descricao;
-    }
-
-    public LocalDateTime getDataResolucao() {
-        return dataResolucao;
-    }
-
-    public void setDataResolucao(LocalDateTime dataResolucao) {
-        this.dataResolucao = dataResolucao;
-    }
-
-    public String getObservacaoResolucao() {
-        return observacaoResolucao;
-    }
-
-    public void setObservacaoResolucao(String observacaoResolucao) {
-        this.observacaoResolucao = observacaoResolucao;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Ocorrencia that = (Ocorrencia) o;
-        return Objects.equals(id, that.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(id);
-    }
-
-    @Override
-    public String toString() {
-        return "Ocorrencia{" +
-                "id='" + id + '\'' +
-                ", dataHora=" + dataHora +
-                ", poloRegional=" + poloRegional +
-                ", tipoOcorrencia=" + tipoOcorrencia +
-                ", placaVeiculo='" + placaVeiculo + '\'' +
-                ", motorista='" + motorista + '\'' +
-                ", monitor='" + monitor + '\'' +
-                ", gravidade=" + gravidade +
-                ", status=" + status +
-                '}';
+    @PrePersist
+    public void prePersist() {
+        if (this.codigoOco == null || this.codigoOco.isBlank()) {
+            this.codigoOco = "OCO-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        }
+        if (this.dataHora == null) {
+            this.dataHora = LocalDateTime.now();
+        }
+        if (this.status == null || this.status.isBlank()) {
+            this.status = "PENDENTE";
+        }
+        if (this.gravidade == null || this.gravidade.isBlank()) {
+            this.gravidade = "MEDIA";
+        }
+        if (this.monitorResponsavel == null || this.monitorResponsavel.isBlank()) {
+            this.monitorResponsavel = "Operador Central";
+        }
     }
 }
