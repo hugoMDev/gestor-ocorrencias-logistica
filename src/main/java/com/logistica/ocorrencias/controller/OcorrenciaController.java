@@ -9,12 +9,15 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/ocorrencias")
 @CrossOrigin(origins = "*")
 public class OcorrenciaController {
+
+    private static final Set<String> STATUS_VALIDOS = Set.of("ABERTO", "EM_ANDAMENTO", "CONCLUIDO");
 
     @Autowired
     private OcorrenciaRepository repository;
@@ -32,38 +35,54 @@ public class OcorrenciaController {
 
     @PatchMapping("/{id}/status")
     public ResponseEntity<Ocorrencia> atualizarStatus(
-            @PathVariable String id,
-            @RequestBody(required = false) Map<String, String> body,
-            @RequestParam(required = false) String status) {
+            @PathVariable UUID id,
+            @RequestBody Map<String, String> payload) {
+        return processarAtualizacaoStatus(id, payload);
+    }
 
-        String novoStatus = null;
-        if (body != null && body.containsKey("status")) {
-            novoStatus = body.get("status");
-        } else if (status != null && !status.isBlank()) {
-            novoStatus = status;
+    @PutMapping("/{id}/status")
+    public ResponseEntity<Ocorrencia> atualizarStatusPut(
+            @PathVariable UUID id,
+            @RequestBody Map<String, String> payload) {
+        return processarAtualizacaoStatus(id, payload);
+    }
+
+    private ResponseEntity<Ocorrencia> processarAtualizacaoStatus(UUID id, Map<String, String> payload) {
+        if (payload == null || !payload.containsKey("status")) {
+            return ResponseEntity.badRequest().build();
         }
 
+        String novoStatus = payload.get("status");
         if (novoStatus == null || novoStatus.isBlank()) {
             return ResponseEntity.badRequest().build();
         }
 
-        Optional<Ocorrencia> optionalOcorrencia = buscarPorIdOuCodigo(id);
+        String statusLimpo = novoStatus.trim().toUpperCase();
+        if (statusLimpo.equals("PENDENTE")) statusLimpo = "ABERTO";
+        if (statusLimpo.equals("EM_ANALISE")) statusLimpo = "EM_ANDAMENTO";
+        if (statusLimpo.equals("RESOLVIDO")) statusLimpo = "CONCLUIDO";
+
+        if (!STATUS_VALIDOS.contains(statusLimpo)) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        Optional<Ocorrencia> optionalOcorrencia = repository.findById(id);
         if (optionalOcorrencia.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
 
         Ocorrencia ocorrencia = optionalOcorrencia.get();
-        ocorrencia.setStatus(novoStatus.trim().toUpperCase());
-        Ocorrencia salva = repository.save(ocorrencia);
-        return ResponseEntity.ok(salva);
+        ocorrencia.setStatus(statusLimpo);
+        Ocorrencia ocorrenciaAtualizada = repository.save(ocorrencia);
+        return ResponseEntity.ok(ocorrenciaAtualizada);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Ocorrencia> atualizarCompleto(
-            @PathVariable String id,
+            @PathVariable UUID id,
             @RequestBody Ocorrencia dados) {
 
-        Optional<Ocorrencia> optionalOcorrencia = buscarPorIdOuCodigo(id);
+        Optional<Ocorrencia> optionalOcorrencia = repository.findById(id);
         if (optionalOcorrencia.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
@@ -84,21 +103,5 @@ public class OcorrenciaController {
 
         Ocorrencia salva = repository.save(ocorrencia);
         return ResponseEntity.ok(salva);
-    }
-
-    private Optional<Ocorrencia> buscarPorIdOuCodigo(String identificador) {
-        if (identificador == null || identificador.isBlank()) {
-            return Optional.empty();
-        }
-        try {
-            UUID uuid = UUID.fromString(identificador);
-            Optional<Ocorrencia> porUuid = repository.findById(uuid);
-            if (porUuid.isPresent()) {
-                return porUuid;
-            }
-        } catch (IllegalArgumentException ignored) {
-            // Não é um UUID, tenta pelo código da ocorrência
-        }
-        return repository.findByCodigoOco(identificador);
     }
 }

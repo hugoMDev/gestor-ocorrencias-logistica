@@ -75,4 +75,15 @@ class OcorrenciaControllerTest {
                         .content(objectMapper.writeValueAsString(Map.of("status", ""))))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    @DisplayName("Deve retornar 400 se o status for inválido")
+    void deveRetornar400SeStatusInvalido() throws Exception {
+        UUID id = UUID.randomUUID();
+
+        mockMvc.perform(patch("/api/ocorrencias/" + id + "/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("status", "STATUS_DESCONHECIDO"))))
+                .andExpect(status().isBadRequest());
+    }
 }

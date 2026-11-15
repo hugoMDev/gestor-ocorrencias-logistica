@@ -1234,7 +1234,18 @@ textarea:focus {
 /* ==========================================================================
    Dropdown de Status Interativo na Tabela
    ========================================================================== */
+.col-status,
+td.col-status,
+td:has(.status-select) {
+    min-width: 145px;
+    width: auto;
+    white-space: nowrap;
+}
+
 .status-select {
+    min-width: 145px;
+    width: auto;
+    white-space: nowrap;
     appearance: none;
     -webkit-appearance: none;
     cursor: pointer;

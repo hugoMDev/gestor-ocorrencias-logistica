@@ -102,7 +102,7 @@ function configurarAutocompletePolo() {
             return;
         }
 
-        // Aguarda 320ms após a última digitação (debounce)
+        // Aguarda 400ms após a última digitação (debounce)
         debounceTimeout = setTimeout(async () => {
             try {
                 if (iconSpinner) iconSpinner.style.opacity = '0.4';
@@ -115,7 +115,7 @@ function configurarAutocompletePolo() {
                 listContainer.classList.remove('hidden');
 
                 abortController = new AbortController();
-                const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=br&addressdetails=1&limit=6&q=${encodeURIComponent(query)}`;
+                const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=br&limit=5&q=${encodeURIComponent(query)}`;
 
                 const resposta = await fetch(url, {
                     signal: abortController.signal,
@@ -153,9 +153,10 @@ function configurarAutocompletePolo() {
                     }
 
                     const subtitulo = item.display_name;
+                    const valorCompleto = item.display_name || titulo;
 
                     return `
-                        <div class="autocomplete-item" data-index="${idx}" data-valor="${escapeHtml(titulo)}" title="${escapeHtml(subtitulo)}">
+                        <div class="autocomplete-item" data-index="${idx}" data-valor="${escapeHtml(valorCompleto)}" title="${escapeHtml(subtitulo)}">
                             <div class="autocomplete-item-icon">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
@@ -170,9 +171,10 @@ function configurarAutocompletePolo() {
                     `;
                 }).join('');
 
-                // Eventos de clique nas sugestões
+                // Seleção dos itens via mousedown com preventDefault() para evitar que o blur do input feche a lista
                 listContainer.querySelectorAll('.autocomplete-item').forEach(itemEl => {
-                    itemEl.addEventListener('click', () => {
+                    itemEl.addEventListener('mousedown', (event) => {
+                        event.preventDefault();
                         const valorSelecionado = itemEl.getAttribute('data-valor');
                         inputPolo.value = valorSelecionado;
                         listContainer.innerHTML = '';
@@ -187,7 +189,7 @@ function configurarAutocompletePolo() {
             } finally {
                 if (iconSpinner) iconSpinner.style.opacity = '1';
             }
-        }, 320);
+        }, 400);
     });
 
     // Fecha dropdown se o usuário clicar fora
@@ -542,11 +544,10 @@ function renderizarTabela() {
         
         // Polo Regional com integração Google Maps
         const poloTexto = item.poloRegional ? (POLOS_LABELS[item.poloRegional] || item.poloRegional) : '';
-        const queryMaps = poloTexto ? `${poloTexto}, Brasil` : '';
         const poloHtml = poloTexto
             ? `<div class="polo-cell">
                  <span class="polo-nome" title="${escapeHtml(poloTexto)}">${escapeHtml(poloTexto)}</span>
-                 <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(queryMaps)}" 
+                 <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(poloTexto)}" 
                     target="_blank" 
                     rel="noopener noreferrer" 
                     class="btn-maps" 
@@ -555,7 +556,7 @@ function renderizarTabela() {
                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                          <circle cx="12" cy="10" r="3"></circle>
                      </svg>
-                     <span>Mapa</span>
+                     <span>Ver no Maps</span>
                  </a>
                </div>`
             : '<span class="text-muted">—</span>';
@@ -609,7 +610,7 @@ function renderizarTabela() {
                 <td>${poloHtml}</td>
                 <td>${tipo}</td>
                 <td>${renderizarBadgeGravidade(item.gravidade)}</td>
-                <td>${statusHtml}</td>
+                <td class="col-status">${statusHtml}</td>
                 <td>${monitor}</td>
                 <td class="col-desc" title="${escapeHtml(item.descricaoFatos || '')}">${desc}</td>
                 <td class="acoes-cell">${acoesHtml}</td>
