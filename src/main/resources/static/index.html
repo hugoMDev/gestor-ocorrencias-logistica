@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Ocorrências Logísticas</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Background Ambient Glows -->
+    <div class="ambient-glow glow-1"></div>
+    <div class="ambient-glow glow-2"></div>
+    <div class="ambient-glow glow-3"></div>
+
+    <div class="app-layout">
+        <!-- Top Header -->
+        <header class="app-header glass-panel">
+            <div class="brand">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="1" y="3" width="15" height="13"></rect>
+                        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                        <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                        <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <h1>GESTOR DE OCORRÊNCIAS LOGÍSTICAS</h1>
+                    <p class="brand-subtitle">Monitoramento Operacional e Despacho de Incidentes</p>
+                </div>
+            </div>
+
+            <div class="header-status">
+                <div class="status-indicator">
+                    <span class="status-dot"></span>
+                    <span class="status-label">Sistema Conectado</span>
+                </div>
+                <div class="header-time" id="clock-display">--:--:--</div>
+            </div>
+        </header>
+
+        <!-- KPI / Metrics Summary Cards -->
+        <section class="kpi-grid">
+            <div class="kpi-card glass-panel">
+                <div class="kpi-icon total">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                    </svg>
+                </div>
+                <div class="kpi-content">
+                    <span class="kpi-label">Total de Ocorrências</span>
+                    <span class="kpi-value" id="kpi-total">0</span>
+                </div>
+            </div>
+
+            <div class="kpi-card glass-panel">
+                <div class="kpi-icon abertos">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                </div>
+                <div class="kpi-content">
+                    <span class="kpi-label">Abertas / Pendentes</span>
+                    <span class="kpi-value" id="kpi-abertos">0</span>
+                </div>
+            </div>
+
+            <div class="kpi-card glass-panel">
+                <div class="kpi-icon andamento">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                    </svg>
+                </div>
+                <div class="kpi-content">
+                    <span class="kpi-label">Em Andamento</span>
+                    <span class="kpi-value" id="kpi-andamento">0</span>
+                </div>
+            </div>
+
+            <div class="kpi-card glass-panel">
+                <div class="kpi-icon criticos">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="12 2 2 22 22 22 12 2"></polygon>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                </div>
+                <div class="kpi-content">
+                    <span class="kpi-label">Críticas / Alta Gravidade</span>
+                    <span class="kpi-value" id="kpi-criticos">0</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Form Card: Registro de Ocorrência -->
+        <main class="content-wrapper">
+            <section class="card glass-panel form-section">
+                <div class="card-header">
+                    <div class="card-title-group">
+                        <div class="section-badge">Formulário de Entrada</div>
+                        <h2>Nova Ocorrência Operacional</h2>
+                        <p class="section-desc">Registre incidentes em rotas, desvios ou avarias para tratamento imediato</p>
+                    </div>
+                </div>
+
+                <form id="form-ocorrencia" class="form-grid" novalidate>
+                    <!-- Linha 1: Placa, Motorista, Monitor -->
+                    <div class="form-group">
+                        <label for="placaVeiculo">
+                            Placa do Veículo
+                            <span class="field-hint">(Ex: ABC-1234 ou BRA2E19)</span>
+                        </label>
+                        <div class="input-wrapper">
+                            <input 
+                                type="text" 
+                                id="placaVeiculo" 
+                                name="placaVeiculo" 
+                                placeholder="ABC-1234" 
+                                maxlength="8" 
+                                autocomplete="off"
+                                spellcheck="false"
+                            >
+                            <span class="input-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="2" y="7" width="20" height="13" rx="2"></rect>
+                                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                                </svg>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="motorista">Motorista</label>
+                        <div class="input-wrapper">
+                            <input 
+                                type="text" 
+                                id="motorista" 
+                                name="motorista" 
+                                placeholder="Nome completo do motorista"
+                            >
+                            <span class="input-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="monitorResponsavel">Monitor Responsável</label>
+                        <div class="input-wrapper">
+                            <input 
+                                type="text" 
+                                id="monitorResponsavel" 
+                                name="monitorResponsavel" 
+                                value="Operador Central" 
+                                placeholder="Nome ou Posto do Monitor"
+                            >
+                            <span class="input-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                    <polyline points="22,6 12,13 2,6"></polyline>
+                                </svg>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Linha 2: Polo Regional, Tipo Ocorrência -->
+                    <div class="form-group">
+                        <label for="poloRegional">Polo Regional</label>
+                        <div class="select-wrapper">
+                            <select id="poloRegional" name="poloRegional">
+                                <option value="" selected disabled>Selecione a região/polo...</option>
+                                <option value="ITUPEVA">Itupeva - SP (CD Central)</option>
+                                <option value="PAULINIA">Paulínia - SP (Hub Petroquímico)</option>
+                                <option value="SAO_JOSE_DOS_CAMPOS">São José dos Campos - SP (Vale do Paraíba)</option>
+                                <option value="CAPITAL_SP">Capital - SP (Centro de Distribuição Urbana)</option>
+                                <option value="OUTRO">Outro / Rota Interestadual</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tipoOcorrencia">Tipo de Ocorrência</label>
+                        <div class="select-wrapper">
+                            <select id="tipoOcorrencia" name="tipoOcorrencia">
+                                <option value="" selected disabled>Selecione o tipo de incidente...</option>
+                                <option value="AVARIA">Avaria na Carga</option>
+                                <option value="DESVIO_ROTA">Desvio de Rota / Telemetria</option>
+                                <option value="ATRASO_CARGA">Atraso no Carregamento / Descarga</option>
+                                <option value="SINISTRO">Sinistro / Acidente na Via</option>
+                                <option value="FALHA_VEICULO">Falha Mecânica / Veículo Parado</option>
+                                <option value="OUTRO">Outro Incidente</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Linha 3: Gravidade, Status -->
+                    <div class="form-group">
+                        <label for="gravidade">Gravidade</label>
+                        <div class="select-wrapper">
+                            <select id="gravidade" name="gravidade">
+                                <option value="BAIXA">Baixa</option>
+                                <option value="MEDIA" selected>Média</option>
+                                <option value="ALTA">Alta</option>
+                                <option value="CRITICA">Crítica</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="status">Status do Atendimento</label>
+                        <div class="select-wrapper">
+                            <select id="status" name="status">
+                                <option value="ABERTO" selected>Aberto</option>
+                                <option value="EM_ANDAMENTO">Em Andamento</option>
+                                <option value="CONCLUIDO">Concluído</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Linha 4: Descrição dos Fatos (Largura total) -->
+                    <div class="form-group full-width">
+                        <label for="descricaoFatos">Descrição dos Fatos</label>
+                        <textarea 
+                            id="descricaoFatos" 
+                            name="descricaoFatos" 
+                            rows="3" 
+                            placeholder="Descreva minuciosamente o ocorrido, localização do veículo, providências iniciais tomadas ou orientações repassadas ao motorista..."
+                        ></textarea>
+                    </div>
+
+                    <!-- Botões de Ação -->
+                    <div class="form-actions full-width">
+                        <button type="button" id="btn-limpar" class="btn btn-secondary">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 6h18"></path>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                            Limpar Campos
+                        </button>
+                        <button type="submit" id="btn-salvar" class="btn btn-primary">
+                            <span class="btn-spinner hidden" id="btn-spinner"></span>
+                            <span class="btn-text">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                    <polyline points="7 3 7 8 15 8"></polyline>
+                                </svg>
+                                Registrar Ocorrência
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Table Card: Ocorrências Registradas -->
+            <section class="card glass-panel table-section">
+                <div class="card-header table-header-flex">
+                    <div class="card-title-group">
+                        <div class="title-with-counter">
+                            <h2>Ocorrências Registradas</h2>
+                            <span class="badge-counter" id="badge-total-ocorrencias">0</span>
+                        </div>
+                        <p class="section-desc">Histórico ordenado em tempo real das ocorrências mais recentes para as mais antigas</p>
+                    </div>
+
+                    <div class="table-controls">
+                        <div class="search-box">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <input 
+                                type="text" 
+                                id="filtro-busca" 
+                                placeholder="Filtrar por código, placa, motorista..."
+                                autocomplete="off"
+                            >
+                        </div>
+
+                        <select id="filtro-status" class="filter-select">
+                            <option value="TODOS">Todos os Status</option>
+                            <option value="ABERTO">Aberto / Pendente</option>
+                            <option value="EM_ANDAMENTO">Em Andamento / Em Análise</option>
+                            <option value="CONCLUIDO">Concluído / Resolvido</option>
+                        </select>
+
+                        <button type="button" id="btn-recarregar" class="btn btn-icon" title="Atualizar Dados">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="23 4 23 10 17 10"></polyline>
+                                <polyline points="1 20 1 14 7 14"></polyline>
+                                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabela com scroll horizontal suave se necessário -->
+                <div class="table-responsive">
+                    <table class="data-table" id="tabela-ocorrencias">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Data / Hora</th>
+                                <th>Placa</th>
+                                <th>Motorista</th>
+                                <th>Polo Regional</th>
+                                <th>Tipo</th>
+                                <th>Gravidade</th>
+                                <th>Status</th>
+                                <th>Monitor</th>
+                                <th>Descrição dos Fatos</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-corpo">
+                            <!-- Inserido dinamicamente via app.js -->
+                        </tbody>
+                    </table>
+
+                    <!-- Estado Vazio / Carregando -->
+                    <div id="estado-vazio" class="empty-state hidden">
+                        <div class="empty-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                                <line x1="8" y1="21" x2="16" y2="21"></line>
+                                <line x1="12" y1="17" x2="12" y2="21"></line>
+                            </svg>
+                        </div>
+                        <h3>Nenhuma ocorrência encontrada</h3>
+                        <p>Nenhum registro coincide com os critérios de filtro ou ainda não há ocorrências cadastradas no sistema.</p>
+                    </div>
+
+                    <div id="estado-carregando" class="loading-state">
+                        <div class="spinner"></div>
+                        <span>Carregando ocorrências da central...</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>Gestor de Ocorrências Logísticas &bull; Central de Monitoramento de Frotas e Incidentes &bull; API v1.0.0</p>
+        </footer>
+    </div>
+
+    <!-- Container de Toasts / Notificações Flutuantes -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
