@@ -173,18 +173,28 @@
                         </div>
                     </div>
 
-                    <!-- Linha 2: Polo Regional, Tipo Ocorrência -->
+                    <!-- Linha 2: Polo Regional com Autocomplete Nominatim, Tipo Ocorrência -->
                     <div class="form-group">
-                        <label for="poloRegional">Polo Regional</label>
-                        <div class="select-wrapper">
-                            <select id="poloRegional" name="poloRegional">
-                                <option value="" selected disabled>Selecione a região/polo...</option>
-                                <option value="ITUPEVA">Itupeva - SP (CD Central)</option>
-                                <option value="PAULINIA">Paulínia - SP (Hub Petroquímico)</option>
-                                <option value="SAO_JOSE_DOS_CAMPOS">São José dos Campos - SP (Vale do Paraíba)</option>
-                                <option value="CAPITAL_SP">Capital - SP (Centro de Distribuição Urbana)</option>
-                                <option value="OUTRO">Outro / Rota Interestadual</option>
-                            </select>
+                        <label for="poloRegional">
+                            Polo Regional / Localização
+                            <span class="field-hint">(Busca inteligente OpenStreetMap ou digitação livre)</span>
+                        </label>
+                        <div class="input-wrapper autocomplete-wrapper">
+                            <input 
+                                type="text" 
+                                id="poloRegional" 
+                                name="poloRegional" 
+                                placeholder="Digite uma cidade, rodovia ou polo (ex: Itupeva, Rod. Anhanguera)..."
+                                autocomplete="off"
+                                spellcheck="false"
+                            >
+                            <span class="input-icon" id="polo-spinner-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                    <circle cx="12" cy="10" r="3"></circle>
+                                </svg>
+                            </span>
+                            <div id="polo-autocomplete-list" class="autocomplete-dropdown glass-panel hidden"></div>
                         </div>
                     </div>
 
@@ -313,12 +323,13 @@
                                 <th>Data / Hora</th>
                                 <th>Placa</th>
                                 <th>Motorista</th>
-                                <th>Polo Regional</th>
+                                <th>Polo / Localização</th>
                                 <th>Tipo</th>
                                 <th>Gravidade</th>
                                 <th>Status</th>
                                 <th>Monitor</th>
                                 <th>Descrição dos Fatos</th>
+                                <th style="text-align: center;">Ações</th>
                             </tr>
                         </thead>
                         <tbody id="tabela-corpo">
