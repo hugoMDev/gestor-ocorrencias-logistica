@@ -1,0 +1,11 @@
+.git
+.gitignore
+target/
+*.log
+.mvn/
+mvnw
+mvnw.cmd
+.vscode/
+dist/
+dados/
+old_desktop_backup/
