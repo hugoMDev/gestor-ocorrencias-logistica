@@ -29,16 +29,56 @@
                 </div>
                 <div class="brand-text">
                     <h1>GESTOR DE OCORRÊNCIAS LOGÍSTICAS</h1>
-                    <p class="brand-subtitle">Monitoramento Operacional e Despacho de Incidentes</p>
+                    <p class="brand-subtitle"><span class="brand-company">SUPERFRIO</span> &bull; Monitoramento Operacional e Despacho de Incidentes</p>
                 </div>
             </div>
 
-            <div class="header-status">
-                <div class="status-indicator">
-                    <span class="status-dot"></span>
-                    <span class="status-label">Sistema Conectado</span>
+            <div class="header-right-zone">
+                <!-- User Profile & Action Controls -->
+                <div class="header-user-controls" id="header-user-controls">
+                    <div class="user-pill" id="user-pill" title="Usuário Autenticado Superfrio">
+                        <span class="user-avatar-badge" id="header-user-avatar">AD</span>
+                        <div class="user-pill-info">
+                            <span class="user-pill-name" id="header-user-name">Administrador</span>
+                            <span class="user-pill-role" id="header-user-role">ADMIN</span>
+                        </div>
+                    </div>
+
+                    <button type="button" id="btn-equipe" class="btn btn-secondary btn-header-action" title="Gestão da Equipe Corporativa Superfrio (Máx. 10)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        <span>Equipe (<span id="equipe-count">--/10</span>)</span>
+                    </button>
+
+                    <button type="button" id="btn-alterar-senha-header" class="btn btn-secondary btn-header-action" title="Alterar Minha Senha Corporativa">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <span>Alterar Senha</span>
+                    </button>
+
+                    <button type="button" id="btn-logout" class="btn btn-danger-soft btn-header-action" title="Encerrar Sessão Segura">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                        <span>Sair</span>
+                    </button>
                 </div>
-                <div class="header-time" id="clock-display">--:--:--</div>
+
+                <div class="header-status">
+                    <div class="status-indicator">
+                        <span class="status-dot"></span>
+                        <span class="status-label">Sistema Conectado</span>
+                    </div>
+                    <div class="header-time" id="clock-display">--:--:--</div>
+                </div>
             </div>
         </header>
 
@@ -362,6 +402,343 @@
         <footer class="app-footer">
             <p>Gestor de Ocorrências Logísticas &bull; Central de Monitoramento de Frotas e Incidentes &bull; API v1.0.0</p>
         </footer>
+    </div>
+
+    <!-- ========================================================================== -->
+    <!-- TELA DE BLOQUEIO / AUTENTICAÇÃO CORPORATIVA SUPERFRIO (FULL SCREEN BLUR) -->
+    <!-- ========================================================================== -->
+    <div id="auth-overlay" class="auth-overlay">
+        <div class="auth-overlay-glow auth-glow-1"></div>
+        <div class="auth-overlay-glow auth-glow-2"></div>
+
+        <div class="auth-card glass-panel" id="auth-card">
+            <!-- View 1: Formulário de Login Principal -->
+            <div id="auth-view-login" class="auth-view">
+                <div class="auth-header">
+                    <div class="auth-badge">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <span>ACESSO RESTRITO</span>
+                    </div>
+                    <h2 class="auth-title">SUPERFRIO • Controle Operacional</h2>
+                    <p class="auth-subtitle">Gestor de Ocorrências Logísticas &bull; Central de Monitoramento</p>
+                </div>
+
+                <div id="login-alerta" class="auth-alert hidden"></div>
+
+                <form id="form-login" class="auth-form" autocomplete="off">
+                    <div class="form-group">
+                        <label for="login-username">Usuário Corporativo</label>
+                        <div class="input-with-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                            <input type="text" id="login-username" name="username" placeholder="ex: admin.superfrio" required autofocus>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="login-senha">Senha</label>
+                        <div class="input-with-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                            <input type="password" id="login-senha" name="senha" placeholder="••••••••" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="btn-login-submit" class="btn btn-primary btn-block btn-lg">
+                        <span class="btn-text">Acessar Sistema</span>
+                        <span class="btn-spinner hidden"></span>
+                    </button>
+                </form>
+
+                <div class="auth-footer-notice">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <span>Política Superfrio: Ciclo corporativo de renovação de senha a cada 15 dias corridos.</span>
+                </div>
+            </div>
+
+            <!-- View 2: Atualização Obrigatória de Senha (Ciclo de 15 dias) -->
+            <div id="auth-view-expirada" class="auth-view hidden">
+                <div class="auth-header">
+                    <div class="auth-badge badge-warning">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        <span>CICLO DE 15 DIAS ATINGIDO</span>
+                    </div>
+                    <h2 class="auth-title">Atualização de Senha</h2>
+                    <p class="auth-subtitle">Política de Segurança Corporativa Superfrio</p>
+                </div>
+
+                <div class="auth-policy-card">
+                    <p><strong>Aviso de Segurança:</strong> Sua senha corporativa completou 15 dias de uso. Para liberar o seu acesso operacional, crie uma nova senha agora.</p>
+                    <p class="policy-tip">Basta alterar <strong>pelo menos 1 caractere</strong> em relação à senha atual (inclusive alternando maiúsculas e minúsculas).</p>
+                </div>
+
+                <div id="expirada-alerta" class="auth-alert hidden"></div>
+
+                <form id="form-expirada" class="auth-form" autocomplete="off">
+                    <div class="form-group">
+                        <label for="expirada-username">Usuário</label>
+                        <input type="text" id="expirada-username" readonly class="input-readonly">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="expirada-senha-atual">Senha Atual</label>
+                        <input type="password" id="expirada-senha-atual" placeholder="Digite sua senha atual" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="expirada-nova-senha">Nova Senha</label>
+                            <input type="password" id="expirada-nova-senha" placeholder="Nova senha (min. 4 carac.)" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="expirada-confirma-senha">Confirmar Nova Senha</label>
+                            <input type="password" id="expirada-confirma-senha" placeholder="Repita a nova senha" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="btn-expirada-submit" class="btn btn-primary btn-block btn-lg">
+                        <span class="btn-text">Atualizar Senha e Entrar</span>
+                        <span class="btn-spinner hidden"></span>
+                    </button>
+
+                    <button type="button" id="btn-expirada-voltar" class="btn btn-secondary btn-block">
+                        Voltar ao Login
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================== -->
+    <!-- MODAL DIÁRIO DE AVISO DE EXPIRAÇÃO (ÚLTIMOS 5 DIAS DO CICLO) -->
+    <!-- ========================================================================== -->
+    <div id="modal-aviso-expiracao" class="modal-backdrop hidden">
+        <div class="modal-card modal-sm glass-panel">
+            <div class="modal-icon-header warning">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+            </div>
+            <h3 class="modal-title">Aviso de Renovação de Senha</h3>
+            <p class="modal-desc">
+                Sua senha corporativa da Superfrio expira em <strong id="aviso-dias-contagem" class="text-warning">X dia(s)</strong>.
+            </p>
+            <p class="modal-subdesc">
+                Evite bloqueios no início do seu turno atualizando sua credencial agora.
+            </p>
+            <div class="modal-actions">
+                <button type="button" id="btn-aviso-alterar-agora" class="btn btn-primary">
+                    Alterar Senha Agora
+                </button>
+                <button type="button" id="btn-aviso-lembrar-amanha" class="btn btn-secondary">
+                    Lembrar Amanhã
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================== -->
+    <!-- MODAL DE GESTÃO DA EQUIPE SUPERFRIO (LIMITE 10 USUÁRIOS) -->
+    <!-- ========================================================================== -->
+    <div id="modal-equipe" class="modal-backdrop hidden">
+        <div class="modal-card modal-lg glass-panel">
+            <div class="modal-header">
+                <div>
+                    <h3 class="modal-title">Equipe Corporativa Superfrio</h3>
+                    <p class="modal-subtitle">Controle de acessos operacionais (Limite corporativo: máx. 10 usuários)</p>
+                </div>
+                <button type="button" class="btn-close-modal" id="btn-fechar-modal-equipe">&times;</button>
+            </div>
+
+            <!-- Cota e Barra de Limite -->
+            <div class="equipe-quota-card">
+                <div class="quota-info">
+                    <span>Ocupação da Equipe Superfrio:</span>
+                    <strong id="equipe-quota-text">0 / 10 usuários cadastrados</strong>
+                </div>
+                <div class="quota-bar-wrapper">
+                    <div id="equipe-quota-bar" class="quota-bar-fill" style="width: 10%;"></div>
+                </div>
+            </div>
+
+            <!-- Alerta quando limite de 10 é atingido -->
+            <div id="equipe-alerta-limite" class="auth-alert alert-warning hidden" style="margin-bottom: 16px;">
+                Limite máximo de 10 usuários corporativos da Superfrio atingido. Para adicionar novos membros, remova um usuário inativo.
+            </div>
+
+            <!-- Formulário para Novo Usuário (exibido apenas se < 10) -->
+            <div id="equipe-box-novo-usuario" class="novo-usuario-box glass-panel">
+                <h4 class="novo-usuario-title">Cadastrar Novo Usuário</h4>
+                <div id="novo-usuario-alerta" class="auth-alert hidden"></div>
+                <form id="form-novo-usuario" class="novo-usuario-form" autocomplete="off">
+                    <!-- Linha 1: 2 colunas com largura adequada para Nome e Login -->
+                    <div class="novo-usuario-row-top">
+                        <div class="form-group">
+                            <label for="novo-nome">Nome Completo</label>
+                            <input type="text" id="novo-nome" placeholder="ex: Carlos Eduardo" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="novo-username">Login / Usuário</label>
+                            <input type="text" id="novo-username" placeholder="ex: carlos.superfrio" required>
+                        </div>
+                    </div>
+
+                    <!-- Linha 2: Senha Inicial, Perfil Administrador e Botão de Ação -->
+                    <div class="novo-usuario-row-bottom">
+                        <div class="form-group form-group-senha">
+                            <label for="novo-senha">Senha Inicial</label>
+                            <input type="password" id="novo-senha" placeholder="Mínimo 4 caracteres" required>
+                        </div>
+                        <div class="form-group form-group-checkbox">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="novo-admin">
+                                <span>Perfil Administrador</span>
+                            </label>
+                        </div>
+                        <div class="form-group form-group-action">
+                            <button type="submit" id="btn-novo-usuario-submit" class="btn btn-primary">
+                                Adicionar Usuário
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Tabela de Usuários Cadastrados -->
+            <div class="table-responsive" style="max-height: 280px; margin-top: 14px;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Usuário</th>
+                            <th>Perfil</th>
+                            <th>Última Troca de Senha</th>
+                            <th>Ciclo de 15 Dias</th>
+                            <th style="text-align: center;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-usuarios-corpo">
+                        <!-- Preenchido via app.js -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================================== -->
+    <!-- MODAL DE EDIÇÃO DE USUÁRIO DA EQUIPE SUPERFRIO -->
+    <!-- ========================================================================== -->
+    <div id="modal-editar-usuario" class="modal-backdrop hidden">
+        <div class="modal-card modal-md glass-panel">
+            <div class="modal-header">
+                <div>
+                    <h3 class="modal-title">Editar Usuário Corporativo</h3>
+                    <p class="modal-subtitle">Atualize os dados cadastrais, perfil de acesso ou redefina a senha</p>
+                </div>
+                <button type="button" class="btn-close-modal" id="btn-fechar-modal-editar-usuario">&times;</button>
+            </div>
+
+            <div id="editar-usuario-alerta" class="auth-alert hidden"></div>
+
+            <form id="form-editar-usuario" class="auth-form" autocomplete="off">
+                <input type="hidden" id="editar-user-id">
+
+                <div class="novo-usuario-row-top" style="margin-bottom: 0;">
+                    <div class="form-group">
+                        <label for="editar-nome">Nome Completo</label>
+                        <input type="text" id="editar-nome" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editar-username">Login / Usuário</label>
+                        <input type="text" id="editar-username" required>
+                    </div>
+                </div>
+
+                <div class="form-group form-group-checkbox" style="margin: 6px 0;">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="editar-admin">
+                        <span>Perfil Administrador (Acesso completo e gestão de equipe)</span>
+                    </label>
+                </div>
+
+                <div class="form-group">
+                    <label for="editar-nova-senha">Redefinir Senha (Opcional)</label>
+                    <input type="password" id="editar-nova-senha" placeholder="Deixe em branco para manter a senha atual">
+                    <small style="color: var(--text-muted); font-size: 11.5px; margin-top: 4px; display: block;">
+                        Se preenchida, a nova senha reiniciará o ciclo de 15 dias corridos deste usuário.
+                    </small>
+                </div>
+
+                <div class="modal-actions" style="margin-top: 18px;">
+                    <button type="submit" id="btn-editar-usuario-submit" class="btn btn-primary">
+                        Salvar Alterações
+                    </button>
+                    <button type="button" id="btn-cancelar-modal-editar-usuario" class="btn btn-secondary">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========================================================================== -->
+    <!-- MODAL DE ALTERAÇÃO VOLUNTÁRIA DE SENHA -->
+    <!-- ========================================================================== -->
+    <div id="modal-alterar-senha" class="modal-backdrop hidden">
+        <div class="modal-card modal-md glass-panel">
+            <div class="modal-header">
+                <div>
+                    <h3 class="modal-title">Alteração de Senha</h3>
+                    <p class="modal-subtitle">Atualize sua credencial de acesso Superfrio</p>
+                </div>
+                <button type="button" class="btn-close-modal" id="btn-fechar-modal-senha">&times;</button>
+            </div>
+
+            <div class="auth-policy-card" style="margin-bottom: 14px;">
+                <p class="policy-tip">A nova senha deve diferir da atual em pelo menos 1 caractere (inclusive maiúsculas/minúsculas). O ciclo de 15 dias será renovado automaticamente.</p>
+            </div>
+
+            <div id="modal-senha-alerta" class="auth-alert hidden"></div>
+
+            <form id="form-modal-senha" class="auth-form" autocomplete="off">
+                <div class="form-group">
+                    <label for="modal-senha-atual">Senha Atual</label>
+                    <input type="password" id="modal-senha-atual" placeholder="Digite sua senha atual" required>
+                </div>
+                <div class="form-group">
+                    <label for="modal-nova-senha">Nova Senha</label>
+                    <input type="password" id="modal-nova-senha" placeholder="Digite a nova senha (min. 4 carac.)" required>
+                </div>
+                <div class="form-group">
+                    <label for="modal-confirma-senha">Confirmar Nova Senha</label>
+                    <input type="password" id="modal-confirma-senha" placeholder="Repita a nova senha" required>
+                </div>
+                <div class="modal-actions" style="margin-top: 16px;">
+                    <button type="submit" id="btn-modal-senha-submit" class="btn btn-primary">
+                        Salvar Nova Senha
+                    </button>
+                    <button type="button" id="btn-cancelar-modal-senha" class="btn btn-secondary">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Container de Toasts / Notificações Flutuantes -->

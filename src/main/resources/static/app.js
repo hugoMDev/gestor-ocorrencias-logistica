@@ -34,7 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
     configurarAutocompletePolo();
     configurarEventosFormulario();
     configurarFiltros();
-    carregarOcorrencias();
+    configurarEventosAutenticacao();
+    verificarSessaoInicial();
 });
 
 // ==========================================================================
@@ -223,7 +224,7 @@ async function carregarOcorrencias() {
         if (loader) loader.classList.remove('hidden');
         if (vazio) vazio.classList.add('hidden');
 
-        const resposta = await fetch('/api/ocorrencias', {
+        const resposta = await authFetch('/api/ocorrencias', {
             method: 'GET',
             headers: { 'Accept': 'application/json' }
         });
@@ -294,7 +295,7 @@ async function salvarOcorrencia(evento) {
     if (btnSpinner) btnSpinner.classList.remove('hidden');
 
     try {
-        const resposta = await fetch('/api/ocorrencias', {
+        const resposta = await authFetch('/api/ocorrencias', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -336,7 +337,7 @@ async function alterarStatusOcorrencia(selectEl) {
     selectEl.disabled = true;
 
     try {
-        const resposta = await fetch(`/api/ocorrencias/${encodeURIComponent(id)}/status`, {
+        const resposta = await authFetch(`/api/ocorrencias/${encodeURIComponent(id)}/status`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -690,14 +691,14 @@ function atualizarKPIs(lista) {
 }
 
 // ==========================================================================
-// Formatação de Data / Hora
+// Formatação de Data / Hora (dd/MM/yyyy HH:mm)
 // ==========================================================================
-function formatarDataHora(valorData) {
+function formatarData(valorData) {
     if (!valorData) return '—';
 
     try {
         const d = new Date(valorData);
-        if (isNaN(d.getTime())) return String(valorData);
+        if (isNaN(d.getTime())) return '—';
 
         const dia = String(d.getDate()).padStart(2, '0');
         const mes = String(d.getMonth() + 1).padStart(2, '0');
@@ -707,8 +708,12 @@ function formatarDataHora(valorData) {
 
         return `${dia}/${mes}/${ano} ${hora}:${minuto}`;
     } catch {
-        return String(valorData);
+        return '—';
     }
+}
+
+function formatarDataHora(valorData) {
+    return formatarData(valorData);
 }
 
 // ==========================================================================
@@ -796,4 +801,902 @@ function escapeHtml(texto) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+// ==========================================================================
+// Módulo de Autenticação Corporativa Superfrio (Ciclo de 15 Dias)
+// ==========================================================================
+const AUTH_STORAGE_KEY = 'superfrio_auth_token';
+const USER_STORAGE_KEY = 'superfrio_auth_user';
+
+let usuarioLogado = null;
+let authToken = null;
+
+function obterToken() {
+    if (authToken) return authToken;
+    authToken = localStorage.getItem(AUTH_STORAGE_KEY);
+    return authToken;
+}
+
+/**
+ * Wrapper de fetch que injeta o Bearer token e intercepta 401 para bloquear a tela
+ */
+async function authFetch(url, options = {}) {
+    const token = obterToken();
+    const headers = Object.assign({}, options.headers || {});
+
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const mergedOptions = { ...options, headers };
+
+    const resposta = await fetch(url, mergedOptions);
+
+    if (resposta.status === 401) {
+        console.warn('Requisição não autorizada (401). Bloqueando tela e limpando sessão.');
+        encerrarSessaoLocal();
+        exibirTelaBloqueio();
+        mostrarToast('Sessão expirada ou não autorizada. Por favor, acesse novamente.', 'erro');
+        throw new Error('Sessão expirada (401)');
+    }
+
+    return resposta;
+}
+
+async function verificarSessaoInicial() {
+    const token = obterToken();
+    if (!token) {
+        exibirTelaBloqueio();
+        return;
+    }
+
+    try {
+        const resposta = await fetch('/api/auth/me', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!resposta.ok) {
+            throw new Error('Token inválido ou sessão encerrada');
+        }
+
+        const usuario = await resposta.json();
+        iniciarSessao(usuario, token, false);
+    } catch (e) {
+        console.warn('Falha na validação da sessão existente:', e);
+        encerrarSessaoLocal();
+        exibirTelaBloqueio();
+    }
+}
+
+function iniciarSessao(usuario, token, exibirToastBoasVindas = true) {
+    usuarioLogado = usuario;
+    authToken = token;
+
+    localStorage.setItem(AUTH_STORAGE_KEY, token);
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(usuario));
+
+    atualizarUIUsuario(usuario);
+    ocultarTelaBloqueio();
+
+    // Carrega dados protegidos da central e contador da equipe
+    carregarOcorrencias();
+    atualizarContadorEquipe();
+
+    if (exibirToastBoasVindas) {
+        mostrarToast(`Bem-vindo(a), ${usuario.nome || usuario.username}! Central Superfrio conectada.`, 'sucesso');
+    }
+}
+
+function encerrarSessaoLocal() {
+    usuarioLogado = null;
+    authToken = null;
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    localStorage.removeItem(USER_STORAGE_KEY);
+    limparDadosInterface();
+}
+
+function limparDadosInterface() {
+    todasOcorrencias = [];
+    atualizarKPIs([]);
+    const corpoTabela = document.getElementById('tabela-corpo');
+    if (corpoTabela) corpoTabela.innerHTML = '';
+    const vazio = document.getElementById('estado-vazio');
+    if (vazio) vazio.classList.add('hidden');
+    const equipeCount = document.getElementById('equipe-count');
+    if (equipeCount) equipeCount.textContent = '--/10';
+}
+
+function exibirTelaBloqueio() {
+    const overlay = document.getElementById('auth-overlay');
+    const viewLogin = document.getElementById('auth-view-login');
+    const viewExpirada = document.getElementById('auth-view-expirada');
+    const loginAlerta = document.getElementById('login-alerta');
+
+    if (overlay) overlay.classList.remove('hidden');
+    if (viewLogin) viewLogin.classList.remove('hidden');
+    if (viewExpirada) viewExpirada.classList.add('hidden');
+    if (loginAlerta) loginAlerta.classList.add('hidden');
+
+    limparDadosInterface();
+}
+
+function ocultarTelaBloqueio() {
+    const overlay = document.getElementById('auth-overlay');
+    if (overlay) overlay.classList.add('hidden');
+}
+
+function atualizarUIUsuario(usuario) {
+    if (!usuario) return;
+
+    const nameEl = document.getElementById('header-user-name');
+    const avatarEl = document.getElementById('header-user-avatar');
+    const roleEl = document.getElementById('header-user-role');
+
+    if (nameEl) nameEl.textContent = usuario.nome || usuario.username;
+
+    if (avatarEl) {
+        const partes = (usuario.nome || usuario.username).trim().split(/\s+/);
+        let iniciais = partes[0] ? partes[0][0] : 'U';
+        if (partes.length > 1) {
+            iniciais += partes[partes.length - 1][0];
+        }
+        avatarEl.textContent = iniciais.toUpperCase().substring(0, 2);
+    }
+
+    if (roleEl) {
+        if (usuario.admin) {
+            roleEl.textContent = 'ADMIN';
+            roleEl.className = 'user-pill-role admin';
+        } else {
+            roleEl.textContent = 'OPERADOR';
+            roleEl.className = 'user-pill-role';
+        }
+    }
+}
+
+function exibirAlerta(el, mensagem, tipo = 'erro') {
+    if (!el) return;
+    el.textContent = mensagem;
+    el.className = `auth-alert ${tipo === 'aviso' ? 'alert-warning' : (tipo === 'sucesso' ? 'alert-success' : '')}`;
+    el.classList.remove('hidden');
+}
+
+// ==========================================================================
+// Configuração de Eventos de Autenticação, Senhas e Equipe
+// ==========================================================================
+function configurarEventosAutenticacao() {
+    // 1. Formulário de Login Principal
+    const formLogin = document.getElementById('form-login');
+    if (formLogin) {
+        formLogin.addEventListener('submit', submeterLogin);
+    }
+
+    // 2. Formulário de Senha Expirada (Ciclo de 15 dias)
+    const formExpirada = document.getElementById('form-expirada');
+    if (formExpirada) {
+        formExpirada.addEventListener('submit', submeterTrocaSenhaExpirada);
+    }
+
+    const btnExpiradaVoltar = document.getElementById('btn-expirada-voltar');
+    if (btnExpiradaVoltar) {
+        btnExpiradaVoltar.addEventListener('click', () => {
+            const viewLogin = document.getElementById('auth-view-login');
+            const viewExpirada = document.getElementById('auth-view-expirada');
+            if (viewExpirada) viewExpirada.classList.add('hidden');
+            if (viewLogin) viewLogin.classList.remove('hidden');
+        });
+    }
+
+    // 3. Botão Sair no cabeçalho
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', fazerLogout);
+    }
+
+    // 4. Modal Alteração Voluntária de Senha
+    const btnAlterarSenhaHeader = document.getElementById('btn-alterar-senha-header');
+    if (btnAlterarSenhaHeader) {
+        btnAlterarSenhaHeader.addEventListener('click', abrirModalAlterarSenha);
+    }
+
+    const btnFecharModalSenha = document.getElementById('btn-fechar-modal-senha');
+    const btnCancelarModalSenha = document.getElementById('btn-cancelar-modal-senha');
+    const fecharModalSenhaHandler = () => {
+        const modal = document.getElementById('modal-alterar-senha');
+        if (modal) modal.classList.add('hidden');
+    };
+    if (btnFecharModalSenha) btnFecharModalSenha.addEventListener('click', fecharModalSenhaHandler);
+    if (btnCancelarModalSenha) btnCancelarModalSenha.addEventListener('click', fecharModalSenhaHandler);
+
+    const formModalSenha = document.getElementById('form-modal-senha');
+    if (formModalSenha) {
+        formModalSenha.addEventListener('submit', submeterModalAlterarSenha);
+    }
+
+    // 5. Modal de Aviso de Expiração (Últimos 5 dias)
+    const btnAvisoAlterar = document.getElementById('btn-aviso-alterar-agora');
+    if (btnAvisoAlterar) {
+        btnAvisoAlterar.addEventListener('click', () => {
+            const modalAviso = document.getElementById('modal-aviso-expiracao');
+            if (modalAviso) modalAviso.classList.add('hidden');
+            abrirModalAlterarSenha();
+        });
+    }
+
+    const btnAvisoLembrar = document.getElementById('btn-aviso-lembrar-amanha');
+    if (btnAvisoLembrar) {
+        btnAvisoLembrar.addEventListener('click', () => {
+            const modalAviso = document.getElementById('modal-aviso-expiracao');
+            if (modalAviso) modalAviso.classList.add('hidden');
+        });
+    }
+
+    // 6. Modal Gestão de Equipe (Máx 10)
+    const btnEquipe = document.getElementById('btn-equipe');
+    if (btnEquipe) {
+        btnEquipe.addEventListener('click', abrirModalEquipe);
+    }
+
+    const btnFecharModalEquipe = document.getElementById('btn-fechar-modal-equipe');
+    if (btnFecharModalEquipe) {
+        btnFecharModalEquipe.addEventListener('click', () => {
+            const modal = document.getElementById('modal-equipe');
+            if (modal) modal.classList.add('hidden');
+        });
+    }
+
+    const formNovoUsuario = document.getElementById('form-novo-usuario');
+    if (formNovoUsuario) {
+        formNovoUsuario.addEventListener('submit', cadastrarNovoUsuario);
+    }
+
+    // 7. Modal Edição de Usuário da Equipe
+    const btnFecharModalEditar = document.getElementById('btn-fechar-modal-editar-usuario');
+    const btnCancelarModalEditar = document.getElementById('btn-cancelar-modal-editar-usuario');
+    const fecharModalEditarHandler = () => {
+        const modal = document.getElementById('modal-editar-usuario');
+        if (modal) modal.classList.add('hidden');
+    };
+    if (btnFecharModalEditar) btnFecharModalEditar.addEventListener('click', fecharModalEditarHandler);
+    if (btnCancelarModalEditar) btnCancelarModalEditar.addEventListener('click', fecharModalEditarHandler);
+
+    const formEditarUsuario = document.getElementById('form-editar-usuario');
+    if (formEditarUsuario) {
+        formEditarUsuario.addEventListener('submit', submeterEditarUsuario);
+    }
+}
+
+async function submeterLogin(evento) {
+    evento.preventDefault();
+    const btnSubmit = document.getElementById('btn-login-submit');
+    const btnSpinner = btnSubmit ? btnSubmit.querySelector('.btn-spinner') : null;
+    const btnText = btnSubmit ? btnSubmit.querySelector('.btn-text') : null;
+    const alertaEl = document.getElementById('login-alerta');
+    const usernameInput = document.getElementById('login-username');
+    const senhaInput = document.getElementById('login-senha');
+
+    const username = usernameInput ? usernameInput.value.trim() : '';
+    const senha = senhaInput ? senhaInput.value : '';
+
+    if (!username || !senha) {
+        exibirAlerta(alertaEl, 'Informe o nome de usuário e a senha.', 'erro');
+        return;
+    }
+
+    if (btnSubmit) btnSubmit.disabled = true;
+    if (btnSpinner) btnSpinner.classList.remove('hidden');
+    if (btnText) btnText.textContent = 'Verificando credenciais...';
+    if (alertaEl) alertaEl.classList.add('hidden');
+
+    try {
+        const resposta = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ username, senha })
+        });
+
+        const dados = await resposta.json();
+
+        if (resposta.status === 401 || resposta.status === 400) {
+            throw new Error(dados.erro || 'Usuário ou senha inválidos.');
+        }
+
+        if (!resposta.ok) {
+            throw new Error(dados.erro || `Erro de autenticação (${resposta.status})`);
+        }
+
+        // Se senha expirada (>= 15 dias de ciclo de segurança Superfrio)
+        if (dados.status === 'SENHA_EXPIRADA') {
+            transicionarParaSenhaExpirada(dados.usuario ? dados.usuario.username : username);
+            return;
+        }
+
+        // Sucesso na autenticação
+        if (dados.token) {
+            iniciarSessao(dados.usuario, dados.token, true);
+
+            // Verifica regra do aviso diário de expiração (últimos 5 dias, entre 10 e 14 dias)
+            if (dados.avisoExpiracao) {
+                verificarAvisoDiarioExpiracao(dados.usuario ? dados.usuario.username : username, dados.diasRestantes);
+            }
+        } else {
+            throw new Error('Token de autenticação não retornado pelo servidor.');
+        }
+
+    } catch (err) {
+        console.error('Falha no login:', err);
+        exibirAlerta(alertaEl, err.message, 'erro');
+    } finally {
+        if (btnSubmit) btnSubmit.disabled = false;
+        if (btnSpinner) btnSpinner.classList.add('hidden');
+        if (btnText) btnText.textContent = 'Acessar Sistema';
+    }
+}
+
+function transicionarParaSenhaExpirada(username) {
+    const viewLogin = document.getElementById('auth-view-login');
+    const viewExpirada = document.getElementById('auth-view-expirada');
+    const userInput = document.getElementById('expirada-username');
+    const senhaAtualInput = document.getElementById('expirada-senha-atual');
+    const novaSenhaInput = document.getElementById('expirada-nova-senha');
+    const confirmaInput = document.getElementById('expirada-confirma-senha');
+    const alertaEl = document.getElementById('expirada-alerta');
+
+    if (viewLogin) viewLogin.classList.add('hidden');
+    if (viewExpirada) viewExpirada.classList.remove('hidden');
+    if (userInput) userInput.value = username;
+    if (senhaAtualInput) senhaAtualInput.value = '';
+    if (novaSenhaInput) novaSenhaInput.value = '';
+    if (confirmaInput) confirmaInput.value = '';
+    if (alertaEl) alertaEl.classList.add('hidden');
+
+    setTimeout(() => {
+        if (senhaAtualInput) senhaAtualInput.focus();
+    }, 100);
+}
+
+async function submeterTrocaSenhaExpirada(evento) {
+    evento.preventDefault();
+    const username = document.getElementById('expirada-username').value.trim();
+    const senhaAtual = document.getElementById('expirada-senha-atual').value;
+    const novaSenha = document.getElementById('expirada-nova-senha').value;
+    const confirmaSenha = document.getElementById('expirada-confirma-senha').value;
+    const alertaEl = document.getElementById('expirada-alerta');
+    const btnSubmit = document.getElementById('btn-expirada-submit');
+    const btnSpinner = btnSubmit ? btnSubmit.querySelector('.btn-spinner') : null;
+    const btnText = btnSubmit ? btnSubmit.querySelector('.btn-text') : null;
+
+    if (!senhaAtual || !novaSenha || !confirmaSenha) {
+        exibirAlerta(alertaEl, 'Preencha todos os campos.', 'erro');
+        return;
+    }
+
+    if (novaSenha === senhaAtual) {
+        exibirAlerta(alertaEl, 'A nova senha deve diferir da atual em pelo menos um caractere, inclusive maiúsculas ou minúsculas.', 'erro');
+        return;
+    }
+
+    if (novaSenha !== confirmaSenha) {
+        exibirAlerta(alertaEl, 'A confirmação de senha não coincide com a nova senha digitada.', 'erro');
+        return;
+    }
+
+    if (novaSenha.length < 4) {
+        exibirAlerta(alertaEl, 'A nova senha deve conter pelo menos 4 caracteres.', 'erro');
+        return;
+    }
+
+    if (btnSubmit) btnSubmit.disabled = true;
+    if (btnSpinner) btnSpinner.classList.remove('hidden');
+    if (btnText) btnText.textContent = 'Atualizando ciclo de 15 dias...';
+    if (alertaEl) alertaEl.classList.add('hidden');
+
+    try {
+        const resposta = await fetch('/api/auth/alterar-senha', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                username,
+                senhaAtual,
+                novaSenha
+            })
+        });
+
+        const dados = await resposta.json();
+
+        if (!resposta.ok) {
+            throw new Error(dados.erro || `Falha ao alterar senha (${resposta.status})`);
+        }
+
+        mostrarToast('Senha corporativa renovada com sucesso! Acesso concedido.', 'sucesso');
+        iniciarSessao(dados.usuario, dados.token, false);
+
+    } catch (err) {
+        console.error('Erro na alteração de senha expirada:', err);
+        exibirAlerta(alertaEl, err.message, 'erro');
+    } finally {
+        if (btnSubmit) btnSubmit.disabled = false;
+        if (btnSpinner) btnSpinner.classList.add('hidden');
+        if (btnText) btnText.textContent = 'Atualizar Senha e Entrar';
+    }
+}
+
+function verificarAvisoDiarioExpiracao(username, diasRestantes) {
+    const hoje = new Date().toISOString().split('T')[0];
+    const chaveStorage = `aviso_senha_${username}_${hoje}`;
+
+    if (localStorage.getItem(chaveStorage)) {
+        return;
+    }
+
+    const modalAviso = document.getElementById('modal-aviso-expiracao');
+    const diasEl = document.getElementById('aviso-dias-contagem');
+    if (diasEl) {
+        diasEl.textContent = `${diasRestantes} dia(s)`;
+    }
+
+    if (modalAviso) {
+        modalAviso.classList.remove('hidden');
+    }
+
+    localStorage.setItem(chaveStorage, 'true');
+}
+
+async function fazerLogout() {
+    const token = obterToken();
+    if (token) {
+        try {
+            await fetch('/api/auth/logout', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+        } catch (e) {
+            console.warn('Erro ao chamar logout na API:', e);
+        }
+    }
+
+    encerrarSessaoLocal();
+    exibirTelaBloqueio();
+    mostrarToast('Sessão encerrada com segurança.', 'info');
+}
+
+// ==========================================================================
+// Gestão da Equipe Superfrio (Máx. 10 Usuários)
+// ==========================================================================
+let listaUsuariosEquipe = [];
+
+async function atualizarContadorEquipe() {
+    try {
+        const res = await authFetch('/api/auth/usuarios');
+        if (!res.ok) return;
+        const usuarios = await res.json();
+        const count = Array.isArray(usuarios) ? usuarios.length : 0;
+        const countEl = document.getElementById('equipe-count');
+        if (countEl) {
+            countEl.textContent = `${count}/10`;
+        }
+    } catch (e) {
+        console.warn('Não foi possível obter contador de equipe:', e);
+    }
+}
+
+async function abrirModalEquipe() {
+    const modal = document.getElementById('modal-equipe');
+    if (modal) modal.classList.remove('hidden');
+    await carregarListaEquipe();
+}
+
+async function carregarListaEquipe() {
+    const corpo = document.getElementById('tabela-usuarios-corpo');
+    const quotaText = document.getElementById('equipe-quota-text');
+    const quotaBar = document.getElementById('equipe-quota-bar');
+    const boxNovo = document.getElementById('equipe-box-novo-usuario');
+    const alertaLimite = document.getElementById('equipe-alerta-limite');
+    const equipeCount = document.getElementById('equipe-count');
+
+    // Estado inicial de carregamento visual na tabela
+    if (corpo && (!corpo.children || corpo.children.length === 0)) {
+        corpo.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 22px; color: var(--text-muted);">
+                    <div style="display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+                        <span class="btn-spinner" style="width: 14px; height: 14px; border-width: 2px;"></span>
+                        <span>Carregando usuários da equipe Superfrio...</span>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+
+    try {
+        const res = await authFetch('/api/auth/usuarios');
+        if (!res.ok) {
+            const erroCorpo = await res.text();
+            throw new Error(erroCorpo || `Erro ${res.status}: ${res.statusText}`);
+        }
+        const usuarios = await res.json();
+        listaUsuariosEquipe = Array.isArray(usuarios) ? usuarios : [];
+        const total = listaUsuariosEquipe.length;
+
+        if (quotaText) quotaText.textContent = `${total} / 10 usuários cadastrados`;
+        if (equipeCount) equipeCount.textContent = `${total}/10`;
+
+        if (quotaBar) {
+            const perc = (total / 10) * 100;
+            quotaBar.style.width = `${perc}%`;
+            if (total >= 10) {
+                quotaBar.className = 'quota-bar-fill warning';
+            } else {
+                quotaBar.className = 'quota-bar-fill';
+            }
+        }
+
+        if (total >= 10) {
+            if (boxNovo) boxNovo.classList.add('hidden');
+            if (alertaLimite) alertaLimite.classList.remove('hidden');
+        } else {
+            if (boxNovo) boxNovo.classList.remove('hidden');
+            if (alertaLimite) alertaLimite.classList.add('hidden');
+        }
+
+        if (!corpo) return;
+
+        if (total === 0) {
+            corpo.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                        Nenhum usuário corporativo cadastrado além do administrador padrão.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        corpo.innerHTML = listaUsuariosEquipe.map(u => {
+            const ehProprio = usuarioLogado && (usuarioLogado.id === u.id || usuarioLogado.username === u.username);
+            const diasTroca = u.diasDesdeTroca !== null && u.diasDesdeTroca !== undefined ? u.diasDesdeTroca : 0;
+            const diasFaltam = u.diasRestantes !== null && u.diasRestantes !== undefined ? u.diasRestantes : Math.max(0, 15 - diasTroca);
+
+            let cicloHtml = '';
+            if (diasFaltam === 0) {
+                cicloHtml = `<span style="color: #f87171; font-weight: 700;">Expirada (0 dias)</span>`;
+            } else if (diasFaltam <= 5) {
+                cicloHtml = `<span style="color: #fbbf24; font-weight: 700;">Falta${diasFaltam === 1 ? '' : 'm'} ${diasFaltam} dia${diasFaltam === 1 ? '' : 's'}</span>`;
+            } else {
+                cicloHtml = `<span style="color: #34d399; font-weight: 600;">Faltam ${diasFaltam} dias</span>`;
+            }
+
+            const dataFormatada = formatarData(u.dataUltimaTrocaSenha);
+            const perfilBadge = u.admin 
+                ? `<span class="badge-admin-tag">ADMIN</span>`
+                : `<span class="badge-operador-tag">OPERADOR</span>`;
+
+            const btnEditar = `
+                <button type="button" class="btn-action-edit" onclick="abrirModalEditarUsuario('${u.id}')" title="Editar dados e perfil do usuário">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 12px; height: 12px;">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                    Editar
+                </button>
+            `;
+
+            let btnExcluir = '';
+            if (ehProprio) {
+                btnExcluir = `<span style="font-size: 11px; color: var(--text-muted); font-style: italic; padding: 4px 6px;">(Você)</span>`;
+            } else {
+                btnExcluir = `
+                    <button type="button" class="btn-action-delete" onclick="excluirUsuarioEquipe('${u.id}', '${escapeHtml(u.nome || u.username)}')" title="Remover usuário da equipe Superfrio">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 12px; height: 12px;">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                        Excluir
+                    </button>
+                `;
+            }
+
+            return `
+                <tr>
+                    <td><strong>${escapeHtml(u.nome || '--')}</strong></td>
+                    <td><code>${escapeHtml(u.username)}</code></td>
+                    <td>${perfilBadge}</td>
+                    <td style="font-size: 12px; color: var(--text-secondary);">${dataFormatada}</td>
+                    <td style="font-size: 12px;">${cicloHtml} <span style="font-size: 10.5px; color: var(--text-muted); font-weight: 400;">(${diasTroca}/15d)</span></td>
+                    <td style="text-align: center;">
+                        <div class="table-actions-group">
+                            ${btnEditar}
+                            ${btnExcluir}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+    } catch (err) {
+        console.error('Erro ao carregar equipe:', err);
+        mostrarToast('Erro ao listar equipe: ' + err.message, 'erro');
+        if (corpo) {
+            corpo.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 22px; color: #f87171;">
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 28px; height: 28px; color: #f87171;">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            <strong>Não foi possível carregar a lista de usuários da equipe Superfrio.</strong>
+                            <span style="font-size: 12px; color: var(--text-secondary); max-width: 480px;">${escapeHtml(err.message)}</span>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+    }
+}
+
+async function excluirUsuarioEquipe(id, nome) {
+    if (!confirm(`Deseja realmente remover o usuário "${nome}" da equipe Superfrio?`)) {
+        return;
+    }
+
+    try {
+        const res = await authFetch(`/api/auth/usuarios/${encodeURIComponent(id)}`, {
+            method: 'DELETE'
+        });
+
+        const dados = await res.json();
+        if (!res.ok) {
+            throw new Error(dados.erro || 'Falha ao remover usuário.');
+        }
+
+        mostrarToast(dados.mensagem || 'Usuário removido com sucesso!', 'sucesso');
+        await carregarListaEquipe();
+        await atualizarContadorEquipe();
+    } catch (err) {
+        mostrarToast(err.message, 'erro');
+    }
+}
+
+function abrirModalEditarUsuario(id) {
+    const usuario = listaUsuariosEquipe.find(u => u.id === id);
+    if (!usuario) {
+        mostrarToast('Usuário não localizado na equipe.', 'erro');
+        return;
+    }
+
+    const modal = document.getElementById('modal-editar-usuario');
+    const alerta = document.getElementById('editar-usuario-alerta');
+    const idInput = document.getElementById('editar-user-id');
+    const nomeInput = document.getElementById('editar-nome');
+    const usernameInput = document.getElementById('editar-username');
+    const adminInput = document.getElementById('editar-admin');
+    const senhaInput = document.getElementById('editar-nova-senha');
+
+    if (alerta) alerta.classList.add('hidden');
+    if (idInput) idInput.value = usuario.id;
+    if (nomeInput) nomeInput.value = usuario.nome || '';
+    if (usernameInput) usernameInput.value = usuario.username || '';
+    if (adminInput) adminInput.checked = !!usuario.admin;
+    if (senhaInput) senhaInput.value = '';
+
+    if (modal) modal.classList.remove('hidden');
+    setTimeout(() => { if (nomeInput) nomeInput.focus(); }, 100);
+}
+
+async function submeterEditarUsuario(evento) {
+    evento.preventDefault();
+    const id = document.getElementById('editar-user-id').value;
+    const nome = document.getElementById('editar-nome').value.trim();
+    const username = document.getElementById('editar-username').value.trim();
+    const admin = document.getElementById('editar-admin').checked;
+    const novaSenha = document.getElementById('editar-nova-senha').value.trim();
+    const alertaEl = document.getElementById('editar-usuario-alerta');
+    const btnSubmit = document.getElementById('btn-editar-usuario-submit');
+
+    if (!nome || !username) {
+        exibirAlerta(alertaEl, 'Nome completo e login são obrigatórios.', 'erro');
+        return;
+    }
+
+    if (novaSenha && novaSenha.length < 4) {
+        exibirAlerta(alertaEl, 'A nova senha deve possuir pelo menos 4 caracteres.', 'erro');
+        return;
+    }
+
+    if (btnSubmit) btnSubmit.disabled = true;
+    if (alertaEl) alertaEl.classList.add('hidden');
+
+    try {
+        const payload = {
+            nome,
+            username,
+            admin,
+            novaSenha: novaSenha || null
+        };
+
+        const res = await authFetch(`/api/auth/usuarios/${encodeURIComponent(id)}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const dados = await res.json();
+        if (!res.ok) {
+            throw new Error(dados.erro || 'Falha ao atualizar dados do usuário.');
+        }
+
+        // Se o usuário editado foi o próprio usuário conectado, atualiza os dados na UI
+        if (usuarioLogado && usuarioLogado.id === id) {
+            usuarioLogado.nome = dados.nome;
+            usuarioLogado.username = dados.username;
+            usuarioLogado.admin = dados.admin;
+            localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(usuarioLogado));
+            atualizarUIUsuario(usuarioLogado);
+        }
+
+        mostrarToast(`Usuário "${dados.username}" atualizado com sucesso!`, 'sucesso');
+
+        const modal = document.getElementById('modal-editar-usuario');
+        if (modal) modal.classList.add('hidden');
+
+        await carregarListaEquipe();
+        await atualizarContadorEquipe();
+
+    } catch (err) {
+        console.error('Erro ao editar usuário:', err);
+        exibirAlerta(alertaEl, err.message, 'erro');
+    } finally {
+        if (btnSubmit) btnSubmit.disabled = false;
+    }
+}
+
+async function cadastrarNovoUsuario(evento) {
+    evento.preventDefault();
+    const nomeInput = document.getElementById('novo-nome');
+    const usernameInput = document.getElementById('novo-username');
+    const senhaInput = document.getElementById('novo-senha');
+    const adminInput = document.getElementById('novo-admin');
+    const alertaEl = document.getElementById('novo-usuario-alerta');
+    const btnSubmit = document.getElementById('btn-novo-usuario-submit');
+
+    const nome = nomeInput ? nomeInput.value.trim() : '';
+    const username = usernameInput ? usernameInput.value.trim() : '';
+    const senha = senhaInput ? senhaInput.value.trim() : '';
+    const admin = adminInput ? adminInput.checked : false;
+
+    if (!nome || !username || !senha) {
+        exibirAlerta(alertaEl, 'Preencha todos os campos.', 'erro');
+        return;
+    }
+
+    if (btnSubmit) btnSubmit.disabled = true;
+    if (alertaEl) alertaEl.classList.add('hidden');
+
+    try {
+        const res = await authFetch('/api/auth/usuarios', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ nome, username, senha, admin })
+        });
+
+        const dados = await res.json();
+        if (!res.ok) {
+            throw new Error(dados.erro || 'Falha ao cadastrar usuário.');
+        }
+
+        mostrarToast(`Usuário "${dados.username}" cadastrado com sucesso na Superfrio!`, 'sucesso');
+        if (nomeInput) nomeInput.value = '';
+        if (usernameInput) usernameInput.value = '';
+        if (senhaInput) senhaInput.value = '';
+        if (adminInput) adminInput.checked = false;
+
+        await carregarListaEquipe();
+        await atualizarContadorEquipe();
+    } catch (err) {
+        exibirAlerta(alertaEl, err.message, 'erro');
+    } finally {
+        if (btnSubmit) btnSubmit.disabled = false;
+    }
+}
+
+// ==========================================================================
+// Alteração Voluntária de Senha
+// ==========================================================================
+function abrirModalAlterarSenha() {
+    const modal = document.getElementById('modal-alterar-senha');
+    const alerta = document.getElementById('modal-senha-alerta');
+    const sAtual = document.getElementById('modal-senha-atual');
+    const sNova = document.getElementById('modal-nova-senha');
+    const sConf = document.getElementById('modal-confirma-senha');
+
+    if (alerta) alerta.classList.add('hidden');
+    if (sAtual) sAtual.value = '';
+    if (sNova) sNova.value = '';
+    if (sConf) sConf.value = '';
+
+    if (modal) modal.classList.remove('hidden');
+    setTimeout(() => { if (sAtual) sAtual.focus(); }, 100);
+}
+
+async function submeterModalAlterarSenha(evento) {
+    evento.preventDefault();
+    if (!usuarioLogado) {
+        mostrarToast('Você não está conectado.', 'erro');
+        return;
+    }
+
+    const sAtual = document.getElementById('modal-senha-atual').value;
+    const sNova = document.getElementById('modal-nova-senha').value;
+    const sConf = document.getElementById('modal-confirma-senha').value;
+    const alerta = document.getElementById('modal-senha-alerta');
+    const btnSubmit = document.getElementById('btn-modal-senha-submit');
+
+    if (!sAtual || !sNova || !sConf) {
+        exibirAlerta(alerta, 'Preencha todos os campos.', 'erro');
+        return;
+    }
+
+    if (sNova === sAtual) {
+        exibirAlerta(alerta, 'A nova senha deve diferir da atual em pelo menos um caractere, inclusive maiúsculas ou minúsculas.', 'erro');
+        return;
+    }
+
+    if (sNova !== sConf) {
+        exibirAlerta(alerta, 'A confirmação de senha não coincide com a nova senha digitada.', 'erro');
+        return;
+    }
+
+    if (sNova.length < 4) {
+        exibirAlerta(alerta, 'A nova senha deve possuir no mínimo 4 caracteres.', 'erro');
+        return;
+    }
+
+    if (btnSubmit) btnSubmit.disabled = true;
+
+    try {
+        const res = await fetch('/api/auth/alterar-senha', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                username: usuarioLogado.username,
+                senhaAtual: sAtual,
+                novaSenha: sNova
+            })
+        });
+
+        const dados = await res.json();
+        if (!res.ok) {
+            throw new Error(dados.erro || 'Falha ao alterar senha.');
+        }
+
+        authToken = dados.token;
+        localStorage.setItem(AUTH_STORAGE_KEY, dados.token);
+        mostrarToast('Senha atualizada com sucesso! Ciclo de 15 dias renovado.', 'sucesso');
+
+        const modal = document.getElementById('modal-alterar-senha');
+        if (modal) modal.classList.add('hidden');
+
+    } catch (err) {
+        exibirAlerta(alerta, err.message, 'erro');
+    } finally {
+        if (btnSubmit) btnSubmit.disabled = false;
+    }
 }
